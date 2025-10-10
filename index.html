@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anima - Password Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1e1e2f">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@otplib/otplib@12.0.1/otplib-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.min.js"></script>
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+<!-- Modals -->
+<div id="createAccountModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('createAccountModal')" aria-label="Close">✕</button>
+    <svg class="logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zm0-9V4c4.41 0 8 3.59 8 8h-3c0-2.76-2.24-5-5-5z" fill="#3b82f6"/>
+    </svg>
+    <h1>Anima</h1>
+    <h3>Create Account</h3>
+    <input type="text" id="createUsername" placeholder="Enter Username" required minlength="3" aria-label="Username">
+    <div id="usernameError" class="error-message">Username must be at least 3 characters</div>
+    <input type="password" id="createPassword" placeholder="Enter Master Password" required minlength="8" aria-label="Master Password">
+    <div id="passwordError" class="error-message">Password must be at least 8 characters</div>
+    <input type="password" id="confirmPassword" placeholder="Confirm Password" required minlength="8" aria-label="Confirm Password">
+    <div id="confirmPasswordError" class="error-message">Passwords do not match</div>
+    <input type="file" id="profilePicture" accept="image/*" aria-label="Profile Picture">
+    <button class="modal-btn" onclick="createAccount()">Create Account</button>
+  </div>
+</div>
+
+<div id="loginModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeLoginModal()" aria-label="Close">✕</button>
+    <svg class="logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zm0-9V4c4.41 0 8 3.59 8 8h-3c0-2.76-2.24-5-5-5z" fill="#3b82f6"/>
+    </svg>
+    <h1>Anima</h1>
+    <h3>Login</h3>
+    <select id="loginUsername" aria-label="Select Username" required>
+      <option value="" disabled selected>Select Username</option>
+    </select>
+    <div class="password-container">
+      <input type="password" id="loginPassword" placeholder="Enter Master Password" required aria-label="Master Password">
+      <button class="show-pass-btn" onclick="toggleLoginPassword()" aria-label="Toggle Password Visibility">👁️</button>
+    </div>
+    <input type="text" id="mfaCode" placeholder="Enter MFA Code" aria-label="MFA Code" style="display:none;">
+    <button class="modal-btn" id="loginBtn" onclick="checkLogin()">Login</button>
+    <button class="modal-btn secondary" onclick="createAccountModal()">Create New Account</button>
+  </div>
+</div>
+
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('editModal')" aria-label="Close">✕</button>
+    <h3>Edit Password</h3>
+    <input type="text" id="siteEdit" placeholder="Site/App" required aria-label="Site or App">
+    <input type="text" id="usernameEdit" placeholder="Username" required aria-label="Username">
+    <input type="email" id="emailEdit" placeholder="Email" aria-label="Email">
+    <input type="text" id="categoryEdit" placeholder="Category" aria-label="Category">
+    <input type="text" id="passwordEdit" placeholder="Password" required oninput="updateStrengthEdit()" aria-label="Password">
+    <div class="strength"><div id="strengthBarEdit" class="strength-bar"></div></div>
+    <input type="number" id="expirationEdit" min="1" placeholder="Expiration Days" aria-label="Expiration Days">
+    <button class="modal-btn" onclick="savePasswordEdit()">Save</button>
+  </div>
+</div>
+
+<div id="resetModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('resetModal')" aria-label="Close">✕</button>
+    <h3>Reset Master Password</h3>
+    <input type="password" id="newMasterPassword" placeholder="New Password" required minlength="8" aria-label="New Password">
+    <div id="newPasswordError" class="error-message">Password must be at least 8 characters</div>
+    <input type="password" id="confirmNewMasterPassword" placeholder="Confirm New Password" required minlength="8" aria-label="Confirm New Password">
+    <div id="confirmNewPasswordError" class="error-message">Passwords do not match</div>
+    <button class="modal-btn" onclick="resetMasterPassword()">Reset</button>
+  </div>
+</div>
+
+<div id="profilePictureModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('profilePictureModal')" aria-label="Close">✕</button>
+    <h3>Change Profile Picture</h3>
+    <input type="file" id="newProfilePicture" accept="image/*" aria-label="New Profile Picture">
+    <button class="modal-btn" onclick="changeProfilePicture()">Update Picture</button>
+  </div>
+</div>
+
+<div id="deleteAccountModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('deleteAccountModal')" aria-label="Close">✕</button>
+    <h3>Delete Account</h3>
+    <p id="deleteAccountName"></p>
+    <input type="password" id="deleteAccountPassword" placeholder="Enter Master Password" required aria-label="Master Password">
+    <button class="modal-btn" onclick="confirmDeleteSelectedAccount()">Delete</button>
+  </div>
+</div>
+
+<div id="deleteAllAccountsModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('deleteAllAccountsModal')" aria-label="Close">✕</button>
+    <h3>Delete All Accounts</h3>
+    <p>Enter your master password to confirm deletion of all accounts.</p>
+    <input type="password" id="deleteAllAccountsPassword" placeholder="Enter Master Password" required aria-label="Master Password">
+    <button class="modal-btn" onclick="confirmDeleteAllAccounts()">Delete All</button>
+  </div>
+</div>
+
+<div id="deletePrompt">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeDeletePrompt()" aria-label="Close">✕</button>
+    <h3 id="deletePromptText">Are you sure?</h3>
+    <button class="modal-btn" id="confirmDeleteBtn">Yes</button>
+    <button class="modal-btn" onclick="closeDeletePrompt()">No</button>
+  </div>
+</div>
+
+<div id="generatePasswordModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('generatePasswordModal')" aria-label="Close">✕</button>
+    <h3>Generate Password</h3>
+    <input type="number" id="passwordLength" value="12" min="8" max="50" placeholder="Password Length" aria-label="Password Length">
+    <div class="checkbox-group">
+      <label><input type="checkbox" id="useUppercase" checked> Uppercase</label>
+      <label><input type="checkbox" id="useLowercase" checked> Lowercase</label>
+      <label><input type="checkbox" id="useNumbers" checked> Numbers</label>
+      <label><input type="checkbox" id="useSpecial" checked> Special Characters</label>
+    </div>
+    <button class="modal-btn" onclick="generatePassword()">Generate</button>
+  </div>
+</div>
+
+<div id="mfaModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('mfaModal')" aria-label="Close">✕</button>
+    <h3>Setup Multi-Factor Authentication</h3>
+    <p>Scan this QR code with an authenticator app (e.g., Google Authenticator).</p>
+    <div id="mfaQrCode"></div>
+    <input type="text" id="mfaSecret" readonly aria-label="MFA Secret">
+    <button class="modal-btn" onclick="copyMfaSecret()">Copy Secret</button>
+    <button class="modal-btn" onclick="enableMfa()">Enable MFA</button>
+  </div>
+</div>
+
+<div id="shareModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('shareModal')" aria-label="Close">✕</button>
+    <h3>Share Password</h3>
+    <input type="number" id="shareExpiration" min="1" max="7" value="1" placeholder="Expiration Days" aria-label="Expiration Days">
+    <div class="share-qr-container"><div id="shareQrCode"></div></div>
+    <input type="text" id="shareLink" readonly aria-label="Share Link">
+    <button class="modal-btn" onclick="copyShareLink()">Copy Link</button>
+  </div>
+</div>
+
+<div id="backupModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('backupModal')" aria-label="Close">✕</button>
+    <h3>Backup Passwords</h3>
+    <input type="password" id="backupPassword" placeholder="Enter Master Password" required aria-label="Master Password">
+    <button class="modal-btn" onclick="backupVault()">Backup</button>
+  </div>
+</div>
+
+<div id="restoreModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('restoreModal')" aria-label="Close">✕</button>
+    <h3>Restore Passwords</h3>
+    <input type="file" id="restoreFile" accept=".json" aria-label="Restore File">
+    <input type="password" id="restorePassword" placeholder="Enter Master Password" required aria-label="Master Password">
+    <button class="modal-btn" onclick="restoreVault()">Restore</button>
+  </div>
+</div>
+
+<!-- Sidebar -->
+<div class="sidebar" style="display:none;">
+  <div class="profile-container">
+    <img id="profileImage" src="Images/fe48a763-a358-45a5-81bd-77c0a70330ee.webp" alt="Profile Picture">
+    <div class="header">
+      <h2 id="sidebarUsername">User</h2>
+      <button class="account-icon" onclick="switchTab('accounts', null)" aria-label="Manage Accounts">👤</button>
+    </div>
+    <button class="active" onclick="switchTab('vault', this)"><span>🏠 Vault</span></button>
+    <button onclick="switchTab('add', this)"><span>➕ Add Password</span></button>
+    <button onclick="switchTab('dashboard', this)"><span>📊 Dashboard</span></button>
+    <button onclick="switchTab('settings', this)"><span>⚙️ Settings</span></button>
+  </div>
+  <div>
+    <button onclick="switchAccount(this)"><span>🔄 Switch Account</span></button>
+    <button onclick="logout(this)"><span>🚪 Logout</span></button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <canvas id="particleCanvas"></canvas>
+  <div class="topbar" id="topbar" style="display:none;">
+    <h2 id="topbarTitle">Vault</h2>
+    <button class="account-icon topbar-avatar" onclick="switchTab('accounts', null)" aria-label="Manage Accounts">
+      <img id="topbarProfileImage" src="Images/fe48a763-a358-45a5-81bd-77c0a70330ee.webp" alt="Profile" />
+    </button>
+  </div>
+  <div id="vault" class="tab active">
+    <input type="text" id="searchBar" placeholder="Search by site, username, or category" aria-label="Search">
+  </div>
+
+  <div id="add" class="tab">
+    <h2>Add Password</h2>
+    <input type="text" id="siteAdd" placeholder="Site/App" required aria-label="Site or App">
+    <input type="text" id="usernameAdd" placeholder="Username" required aria-label="Username">
+    <input type="email" id="emailAdd" placeholder="Email" aria-label="Email">
+    <select id="categoryAdd" aria-label="Category">
+      <option value="" disabled selected>Select Category</option>
+    </select>
+    <div class="password-container">
+      <input type="text" id="passwordAdd" placeholder="Password" required oninput="updateStrengthAdd()" aria-label="Password">
+      <button class="generate-pass-btn" onclick="openGeneratePasswordModal()" aria-label="Generate Password">🔄</button>
+    </div>
+    <div class="strength"><div id="strengthBarAdd" class="strength-bar"></div></div>
+    <input type="number" id="expirationAdd" placeholder="Expiration Days" value="90" min="1" aria-label="Expiration Days">
+    <button class="modal-btn" onclick="savePasswordAdd()">Add Password</button>
+  </div>
+
+  <div id="dashboard" class="tab">
+    <h2>Password Health Dashboard</h2>
+    <div id="passwordChartContainer">
+      <canvas id="passwordChart"></canvas>
+    </div>
+  </div>
+
+  <div id="accounts" class="tab">
+    <h2>Manage Accounts</h2>
+    <button class="modal-btn" onclick="createAccountModal()">Create New Account</button>
+    <button class="modal-btn" onclick="changeProfilePictureModal()">Change Profile Picture</button>
+    <button class="modal-btn btn-delete" onclick="confirmDeleteAllAccountsModal()">Delete All Accounts</button>
+    <h3>Current Account: <span id="currentUser"></span></h3>
+    <div class="account-delete-section">
+      <h3>Delete Account</h3>
+      <select id="accountDeleteSelect" aria-label="Select Account to Delete">
+        <option value="" disabled selected>Select Account</option>
+      </select>
+      <button class="btn-delete" onclick="confirmDeleteAccount()">Delete Selected Account</button>
+    </div>
+  </div>
+
+  <div id="settings" class="tab">
+    <h2>Settings</h2>
+    <button class="modal-btn" onclick="toggleTheme()">Toggle Theme</button>
+    <button class="modal-btn" onclick="toggleParticles()">Toggle Particles</button>
+    <button class="modal-btn" onclick="setupMfa()">Setup MFA</button>
+    <button class="modal-btn" onclick="openBackupModal()">Backup Vault</button>
+    <button class="modal-btn" onclick="openRestoreModal()">Restore Vault</button>
+    <button class="modal-btn" onclick="resetMasterPasswordModal()">Reset Master Password</button>
+    <button class="modal-btn" onclick="confirmDeleteAllPasswords()">Delete All Passwords</button>
+    <div id="categoryManager">
+      <h3>Manage Categories</h3>
+      <input type="text" id="newCategory" placeholder="New Category" aria-label="New Category">
+      <button class="modal-btn" onclick="addCategory()">Add Category</button>
+      <select id="categorySelect" aria-label="Select Category">
+        <option value="" disabled selected>Select Category to Delete</option>
+      </select>
+      <button class="modal-btn btn-delete" onclick="deleteCategory()">Delete Category</button>
+    </div>
+    <div id="auditLog">
+      <h3>Audit Log</h3>
+      <ul id="auditLogList"></ul>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-nav" id="bottomNav" style="display:none;">
+  <button data-tab="vault" onclick="handleBottomNav(this,'vault')">🏠<span>Vault</span></button>
+  <button data-tab="add" onclick="handleBottomNav(this,'add')">➕<span>Add</span></button>
+  <button data-tab="dashboard" onclick="handleBottomNav(this,'dashboard')">📊<span>Dashboard</span></button>
+  <button data-tab="settings" onclick="handleBottomNav(this,'settings')">⚙️<span>Settings</span></button>
+</div>
+
+<div class="toast" id="toast"></div>
+<button class="open-login-btn" id="openLoginBtn" onclick="openLoginModal()">Open Login</button>
+
+<script src="assets/js/app.js" defer></script>
+<script defer>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js');
+    });
+  }
+  // Prompt install on Android (optional UI hook)
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Example: show a button users can click to install
+    // document.getElementById('openLoginBtn').textContent = 'Install App';
+    // document.getElementById('openLoginBtn').onclick = async () => {
+    //   deferredPrompt.prompt();
+    //   const { outcome } = await deferredPrompt.userChoice;
+    //   deferredPrompt = null;
+    // };
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "animapasswordmanager",
+  "version": "1.0.0",
+  "description": "This project is a client-side password manager. It stores data in your browser's localStorage and encrypts vault contents with your master password.",
+  "main": "service-worker.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "sharp": "0.34.4"
+  }
+}

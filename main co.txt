@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anima - Password Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@otplib/otplib@12.0.1/otplib-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;min-height:100vh;display:flex;background:#1e1e2f;color:#f9fafb;overflow:hidden;transition:0.3s;}
+body.light{background:#f9f9f9;color:#1e1e2f;}
+button{cursor:pointer;outline:none;border:none;position:relative;transition:0.3s;}
+button:disabled{opacity:0.6;cursor:not-allowed;}
+.sidebar{width:240px;background:linear-gradient(145deg,#111827,#1f1f3f);color:#fff;display:flex;flex-direction:column;padding:20px 20px 10px;box-shadow:2px 0 10px rgba(0,0,0,0.2);align-items:center;justify-content:space-between;}
+body.light .sidebar{background:linear-gradient(145deg,#e0e0e0,#cfcfcf);color:#1e1e2f;}
+.sidebar img{width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid #3b82f6;}
+.sidebar .profile-container{display:flex;flex-direction:column;align-items:center;gap:15px;padding-bottom:20px;}
+.sidebar .header{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;}
+.sidebar h2{font-size:1.6em;font-weight:700;color:inherit;text-align:center;}
+.sidebar .account-icon{background:linear-gradient(135deg,#1f2937,#2c2c50);color:#cbd5e1;padding:8px;border-radius:8px;font-size:16px;display:flex;align-items:center;justify-content:center;width:36px;height:36px;}
+.sidebar .account-icon:hover{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;}
+body.light .sidebar .account-icon{background:linear-gradient(135deg,#d1d5db,#e5e5e5);color:#1e1e2f;}
+body.light .sidebar .account-icon:hover{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;}
+.sidebar button{background:linear-gradient(135deg,#1f2937,#2c2c50);color:#cbd5e1;padding:12px 18px;font-size:16px;margin-bottom:10px;border-radius:12px;display:flex;align-items:center;gap:10px;font-weight:500;justify-content:center;width:100%;text-align:center;}
+.sidebar button span{flex:1;}
+.sidebar button.active, .sidebar button:hover{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;}
+body.light .sidebar button{background:linear-gradient(135deg,#d1d5db,#e5e5e5);color:#1e1e2f;}
+body.light .sidebar button.active, body.light .sidebar button:hover{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;}
+.main{flex:1;padding:30px;overflow-x:auto;position:relative;transition:0.3s;color:inherit;display:none;}
+.tab{display:none;}
+.tab.active{display:block;}
+input, select{width:100%;padding:10px 12px;margin-top:5px;border-radius:10px;border:1px solid #3b3b5a;background:#2a2a40;color:#f9fafb;transition:0.3s;}
+body.light input, body.light select{background:#fff;color:#1e1e2f;border:1px solid #999;}
+input:focus, select:focus{border-color:#3b82f6;box-shadow:0 0 5px rgba(59,130,246,0.3);outline:none;}
+input[type="file"]{padding:5px;}
+input[type="number"]{width:100px;}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;opacity:0;pointer-events:none;transition:0.3s;transform:scale(0.8);z-index:1000;}
+.modal.active{opacity:1;pointer-events:auto;transform:scale(1);}
+.modal-content{background:linear-gradient(145deg,#2a2a40,#3b3b5a);color:#f9fafb;padding:25px;border-radius:20px;width:400px;max-width:90%;box-shadow:0 8px 20px rgba(0,0,0,0.3);position: relative;}
+body.light .modal-content{background:linear-gradient(145deg,#fff,#f0f0f0);color:#1e1e2f;}
+.modal-content h3{margin-bottom:15px;}
+.modal-content h1{font-size:2em;font-weight:700;text-align:center;margin-bottom:10px;}
+.modal-content .logo{display:block;margin:0 auto 10px;width:50px;height:50px;}
+body.light .modal-content .logo{filter:brightness(0.8);}
+.modal-btn{width:100%;padding:12px;border-radius:12px;border:none;margin-top:10px;background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;font-weight:600;transition:0.3s;}
+.modal-btn:hover{background:linear-gradient(135deg,#2563eb,#3b82f6);transform:scale(1.03);}
+.modal-btn.loading::after{content:'...';}
+.modal-btn.secondary{background:linear-gradient(135deg,#6b7280,#9ca3af);color:#fff;}
+.modal-btn.secondary:hover{background:linear-gradient(135deg,#4b5563,#6b7280);}
+body.light .modal-btn.secondary{background:linear-gradient(135deg,#9ca3af,#d1d5db);color:#1e1e2f;}
+body.light .modal-btn.secondary:hover{background:linear-gradient(135deg,#6b7280,#9ca3af);}
+.close-btn{position:absolute;top:10px;right:10px;background:none;color:#cbd5e1;font-size:20px;padding:5px;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;}
+.close-btn:hover{background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;transform:scale(1.1);}
+body.light .close-btn{color:#4b5563;}
+body.light .close-btn:hover{background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;}
+.show-pass-btn, .generate-pass-btn, .share-btn, .autofill-btn, .category-btn{margin-left:10px;padding:2px 8px;background:linear-gradient(135deg,#3b82f6,#60a5fa);border-radius:5px;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.show-pass-btn:hover, .generate-pass-btn:hover, .share-btn:hover, .autofill-btn:hover, .category-btn:hover{background:linear-gradient(135deg,#2563eb,#3b82f6);}
+.vault-card{background:linear-gradient(135deg,#2a2a40,#3b3b5a);border-radius:15px;padding:20px;margin-bottom:15px;transition: transform 0.3s, box-shadow 0.3s, opacity 0.5s;opacity:0;transform: translateY(20px);cursor:grab;user-select:none;display:flex;flex-direction:row;gap:15px;align-items:center;box-shadow:0 4px 6px rgba(0,0,0,0.1);flex-wrap:wrap;}
+body.light .vault-card{background:linear-gradient(135deg,#e5e5e5,#d4d4d4);color:#1e1e2f;box-shadow:0 4px 6px rgba(0,0,0,0.05);}
+.vault-card.show{opacity:1;transform: translateY(0);}
+.vault-card:hover{transform: translateY(-5px);box-shadow:0 6px 12px rgba(0,0,0,0.2);}
+body.light .vault-card:hover{box-shadow:0 6px 12px rgba(0,0,0,0.1);}
+.vault-card.expiring-soon, .vault-card.expired {border: 2px solid #f59e0b;}
+.vault-card.expired {border-color: #ef4444;}
+.vault-item{display:flex;flex-direction:row;gap:10px;align-items:center;min-width:150px;}
+.vault-item b{font-weight:600;min-width:80px;}
+.vault-item .password-field{display:flex;align-items:center;gap:5px;}
+.vault-item input[readonly]{background:none;border:none;color:inherit;cursor:pointer;flex:1;}
+.vault-item .actions{display:flex;gap:5px;justify-content:flex-start;align-items:center;}
+.vault-item button.btn-copy, .vault-item button.btn-edit, .vault-item button.btn-delete, .vault-item button.autofill-btn, .vault-item button.share-btn{width:32px;height:32px;border-radius:8px;font-size:16px;display:flex;align-items:center;justify-content:center;transition:transform 0.2s, box-shadow 0.2s;}
+.vault-item button.btn-copy{background:linear-gradient(135deg,#10b981,#34d399);color:#fff;}
+.vault-item button.btn-copy:hover{transform:translateY(-2px);box-shadow:0 4px 8px rgba(16,185,129,0.3);}
+.vault-item button.btn-edit{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;}
+.vault-item button.btn-edit:hover{transform:translateY(-2px);box-shadow:0 4px 8px rgba(59,130,246,0.3);}
+.vault-item button.btn-delete{background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;}
+.vault-item button.btn-delete:hover{transform:translateY(-2px);box-shadow:0 4px 8px rgba(239,68,68,0.3);}
+.vault-item button.autofill-btn{background:linear-gradient(135deg,#8b5cf6,#a78bfa);color:#fff;}
+.vault-item button.autofill-btn:hover{transform:translateY(-2px);box-shadow:0 4px 8px rgba(139,92,246,0.3);}
+.vault-item button.share-btn{background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#fff;}
+.vault-item button.share-btn:hover{transform:translateY(-2px);box-shadow:0 4px 8px rgba(245,158,11,0.3);}
+.drag-handle{cursor:grab;font-size:16px;color:#f59e0b;}
+.strength{height:8px;width:100%;border-radius:5px;background:#444;margin-top:5px;overflow:hidden;}
+body.light .strength{background:#ccc;}
+.strength-bar{height:100%;width:0%;border-radius:5px;transition:width 0.5s ease, background 0.5s ease;}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:-1;}
+#passwordChartContainer{width:100%;height:100%;position:absolute;top:0;left:0;margin:0;padding:30px;}
+#passwordChartContainer canvas{width:100% !important;height:100% !important;}
+#auditLog{max-height:200px;overflow-y:auto;border:1px solid #3b3b5a;padding:10px;border-radius:10px;}
+body.light #auditLog{border:1px solid #999;}
+#searchBar{margin-bottom:20px;}
+#categoryManager{margin-top:20px;}
+#categoryManager select, #categoryManager input, #categoryManager button{margin-bottom:10px;}
+.share-qr-container{text-align:center;}
+.share-qr-container img{max-width:200px;margin:10px auto;}
+#shareLink{display:none;}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#333,#555);padding:15px 25px;border-radius:12px;color:#fff;opacity:0;pointer-events:none;transition:all 0.5s ease;z-index:1000;}
+body.light .toast{background:linear-gradient(135deg,#666,#888);color:#fff;}
+.toast.show{opacity:1;}
+#deletePrompt{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;opacity:0;pointer-events:none;transition:0.3s;z-index:2000;}
+#deletePrompt.active{opacity:1;pointer-events:auto;}
+#deletePrompt .modal-content{max-width:350px;text-align:center;}
+#deletePrompt .modal-btn {margin:10px 5px;}
+#deleteAccountModal .modal-content, #deleteAllAccountsModal .modal-content, #generatePasswordModal .modal-content, #mfaModal .modal-content, #shareModal .modal-content{width:400px;}
+.account-delete-section{display:flex;flex-direction:column;gap:10px;margin-top:20px;}
+.account-delete-section select{margin-bottom:10px;}
+.account-delete-section .btn-delete{font-size:14px;padding:10px 16px;border-radius:10px;font-weight:600;background:linear-gradient(135deg,#ef4444,#f87171);box-shadow:0 2px 4px rgba(0,0,0,0.2);transition:transform 0.2s, box-shadow 0.2s;}
+.account-delete-section .btn-delete:hover{transform:translateY(-2px);box-shadow:0 4px 8px rgba(239,68,68,0.4);background:linear-gradient(135deg,#dc2626,#ef4444);}
+body.light .account-delete-section .btn-delete{background:linear-gradient(135deg,#f87171,#ef4444);box-shadow:0 2px 4px rgba(0,0,0,0.1);}
+body.light .account-delete-section .btn-delete:hover{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 4px 8px rgba(239,68,68,0.3);}
+.password-container{position:relative;display:flex;align-items:center;gap:5px;}
+.checkbox-group{display:flex;gap:10px;margin-top:10px;}
+.checkbox-group label{display:flex;align-items:center;gap:5px;}
+.open-login-btn{position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);padding:15px 30px;border-radius:12px;background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;font-weight:600;font-size:16px;display:none;}
+.open-login-btn:hover{background:linear-gradient(135deg,#2563eb,#3b82f6);transform:translate(-50%, -50%) scale(1.05);}
+body.light .open-login-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;}
+body.light .open-login-btn:hover{background:linear-gradient(135deg,#2563eb,#3b82f6);}
+input:invalid {border-color: #ef4444;}
+.error-message {color: #ef4444; font-size: 12px; margin-top: 5px; display: none;}
+</style>
+</head>
+<body>
+
+<!-- Modals -->
+<div id="createAccountModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('createAccountModal')" aria-label="Close">✕</button>
+    <svg class="logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zm0-9V4c4.41 0 8 3.59 8 8h-3c0-2.76-2.24-5-5-5z" fill="#3b82f6"/>
+    </svg>
+    <h1>Anima</h1>
+    <h3>Create Account</h3>
+    <input type="text" id="createUsername" placeholder="Enter Username" required minlength="3" aria-label="Username">
+    <div id="usernameError" class="error-message">Username must be at least 3 characters</div>
+    <input type="password" id="createPassword" placeholder="Enter Master Password" required minlength="8" aria-label="Master Password">
+    <div id="passwordError" class="error-message">Password must be at least 8 characters</div>
+    <input type="password" id="confirmPassword" placeholder="Confirm Password" required minlength="8" aria-label="Confirm Password">
+    <div id="confirmPasswordError" class="error-message">Passwords do not match</div>
+    <input type="file" id="profilePicture" accept="image/*" aria-label="Profile Picture">
+    <button class="modal-btn" onclick="createAccount()">Create Account</button>
+  </div>
+</div>
+
+<div id="loginModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeLoginModal()" aria-label="Close">✕</button>
+    <svg class="logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zm0-9V4c4.41 0 8 3.59 8 8h-3c0-2.76-2.24-5-5-5z" fill="#3b82f6"/>
+    </svg>
+    <h1>Anima</h1>
+    <h3>Login</h3>
+    <select id="loginUsername" aria-label="Select Username" required>
+      <option value="" disabled selected>Select Username</option>
+    </select>
+    <div class="password-container">
+      <input type="password" id="loginPassword" placeholder="Enter Master Password" required aria-label="Master Password">
+      <button class="show-pass-btn" onclick="toggleLoginPassword()" aria-label="Toggle Password Visibility">👁️</button>
+    </div>
+    <input type="text" id="mfaCode" placeholder="Enter MFA Code" aria-label="MFA Code" style="display:none;">
+    <button class="modal-btn" id="loginBtn" onclick="checkLogin()">Login</button>
+    <button class="modal-btn secondary" onclick="createAccountModal()">Create New Account</button>
+  </div>
+</div>
+
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('editModal')" aria-label="Close">✕</button>
+    <h3>Edit Password</h3>
+    <input type="text" id="siteEdit" placeholder="Site/App" required aria-label="Site or App">
+    <input type="text" id="usernameEdit" placeholder="Username" required aria-label="Username">
+    <input type="email" id="emailEdit" placeholder="Email" aria-label="Email">
+    <input type="text" id="categoryEdit" placeholder="Category" aria-label="Category">
+    <input type="text" id="passwordEdit" placeholder="Password" required oninput="updateStrengthEdit()" aria-label="Password">
+    <div class="strength"><div id="strengthBarEdit" class="strength-bar"></div></div>
+    <input type="number" id="expirationEdit" min="1" placeholder="Expiration Days" aria-label="Expiration Days">
+    <button class="modal-btn" onclick="savePasswordEdit()">Save</button>
+  </div>
+</div>
+
+<div id="resetModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('resetModal')" aria-label="Close">✕</button>
+    <h3>Reset Master Password</h3>
+    <input type="password" id="newMasterPassword" placeholder="New Password" required minlength="8" aria-label="New Password">
+    <div id="newPasswordError" class="error-message">Password must be at least 8 characters</div>
+    <input type="password" id="confirmNewMasterPassword" placeholder="Confirm New Password" required minlength="8" aria-label="Confirm New Password">
+    <div id="confirmNewPasswordError" class="error-message">Passwords do not match</div>
+    <button class="modal-btn" onclick="resetMasterPassword()">Reset</button>
+  </div>
+</div>
+
+<div id="profilePictureModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('profilePictureModal')" aria-label="Close">✕</button>
+    <h3>Change Profile Picture</h3>
+    <input type="file" id="newProfilePicture" accept="image/*" aria-label="New Profile Picture">
+    <button class="modal-btn" onclick="changeProfilePicture()">Update Picture</button>
+  </div>
+</div>
+
+<div id="deleteAccountModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('deleteAccountModal')" aria-label="Close">✕</button>
+    <h3>Delete Account</h3>
+    <p id="deleteAccountName"></p>
+    <input type="password" id="deleteAccountPassword" placeholder="Enter Master Password" required aria-label="Master Password">
+    <button class="modal-btn" onclick="confirmDeleteSelectedAccount()">Delete</button>
+  </div>
+</div>
+
+<div id="deleteAllAccountsModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('deleteAllAccountsModal')" aria-label="Close">✕</button>
+    <h3>Delete All Accounts</h3>
+    <p>Enter your master password to confirm deletion of all accounts.</p>
+    <input type="password" id="deleteAllAccountsPassword" placeholder="Enter Master Password" required aria-label="Master Password">
+    <button class="modal-btn" onclick="confirmDeleteAllAccounts()">Delete All</button>
+  </div>
+</div>
+
+<div id="deletePrompt">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeDeletePrompt()" aria-label="Close">✕</button>
+    <h3 id="deletePromptText">Are you sure?</h3>
+    <button class="modal-btn" id="confirmDeleteBtn">Yes</button>
+    <button class="modal-btn" onclick="closeDeletePrompt()">No</button>
+  </div>
+</div>
+
+<div id="generatePasswordModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('generatePasswordModal')" aria-label="Close">✕</button>
+    <h3>Generate Password</h3>
+    <input type="number" id="passwordLength" value="12" min="8" max="50" placeholder="Password Length" aria-label="Password Length">
+    <div class="checkbox-group">
+      <label><input type="checkbox" id="useUppercase" checked> Uppercase</label>
+      <label><input type="checkbox" id="useLowercase" checked> Lowercase</label>
+      <label><input type="checkbox" id="useNumbers" checked> Numbers</label>
+      <label><input type="checkbox" id="useSpecial" checked> Special Characters</label>
+    </div>
+    <button class="modal-btn" onclick="generatePassword()">Generate</button>
+  </div>
+</div>
+
+<div id="mfaModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('mfaModal')" aria-label="Close">✕</button>
+    <h3>Setup Multi-Factor Authentication</h3>
+    <p>Scan this QR code with an authenticator app (e.g., Google Authenticator).</p>
+    <div id="mfaQrCode"></div>
+    <input type="text" id="mfaSecret" readonly aria-label="MFA Secret">
+    <button class="modal-btn" onclick="copyMfaSecret()">Copy Secret</button>
+    <button class="modal-btn" onclick="enableMfa()">Enable MFA</button>
+  </div>
+</div>
+
+<div id="shareModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('shareModal')" aria-label="Close">✕</button>
+    <h3>Share Password</h3>
+    <input type="number" id="shareExpiration" min="1" max="7" value="1" placeholder="Expiration Days" aria-label="Expiration Days">
+    <div class="share-qr-container"><div id="shareQrCode"></div></div>
+    <input type="text" id="shareLink" readonly aria-label="Share Link">
+    <button class="modal-btn" onclick="copyShareLink()">Copy Link</button>
+  </div>
+</div>
+
+<div id="backupModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('backupModal')" aria-label="Close">✕</button>
+    <h3>Backup Passwords</h3>
+    <input type="password" id="backupPassword" placeholder="Enter Master Password" required aria-label="Master Password">
+    <button class="modal-btn" onclick="backupVault()">Backup</button>
+  </div>
+</div>
+
+<div id="restoreModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('restoreModal')" aria-label="Close">✕</button>
+    <h3>Restore Passwords</h3>
+    <input type="file" id="restoreFile" accept=".json" aria-label="Restore File">
+    <input type="password" id="restorePassword" placeholder="Enter Master Password" required aria-label="Master Password">
+    <button class="modal-btn" onclick="restoreVault()">Restore</button>
+  </div>
+</div>
+
+<!-- Sidebar -->
+<div class="sidebar" style="display:none;">
+  <div class="profile-container">
+    <img id="profileImage" src="Images/fe48a763-a358-45a5-81bd-77c0a70330ee.webp" alt="Profile Picture">
+    <div class="header">
+      <h2 id="sidebarUsername">User</h2>
+      <button class="account-icon" onclick="switchTab('accounts', null)" aria-label="Manage Accounts">👤</button>
+    </div>
+    <button class="active" onclick="switchTab('vault', this)"><span>🏠 Vault</span></button>
+    <button onclick="switchTab('add', this)"><span>➕ Add Password</span></button>
+    <button onclick="switchTab('dashboard', this)"><span>📊 Dashboard</span></button>
+    <button onclick="switchTab('settings', this)"><span>⚙️ Settings</span></button>
+  </div>
+  <div>
+    <button onclick="switchAccount(this)"><span>🔄 Switch Account</span></button>
+    <button onclick="logout(this)"><span>🚪 Logout</span></button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <canvas id="particleCanvas"></canvas>
+  <div id="vault" class="tab active">
+    <input type="text" id="searchBar" placeholder="Search by site, username, or category" aria-label="Search">
+  </div>
+
+  <div id="add" class="tab">
+    <h2>Add Password</h2>
+    <input type="text" id="siteAdd" placeholder="Site/App" required aria-label="Site or App">
+    <input type="text" id="usernameAdd" placeholder="Username" required aria-label="Username">
+    <input type="email" id="emailAdd" placeholder="Email" aria-label="Email">
+    <select id="categoryAdd" aria-label="Category">
+      <option value="" disabled selected>Select Category</option>
+    </select>
+    <div class="password-container">
+      <input type="text" id="passwordAdd" placeholder="Password" required oninput="updateStrengthAdd()" aria-label="Password">
+      <button class="generate-pass-btn" onclick="openGeneratePasswordModal()" aria-label="Generate Password">🔄</button>
+    </div>
+    <div class="strength"><div id="strengthBarAdd" class="strength-bar"></div></div>
+    <input type="number" id="expirationAdd" placeholder="Expiration Days" value="90" min="1" aria-label="Expiration Days">
+    <button class="modal-btn" onclick="savePasswordAdd()">Add Password</button>
+  </div>
+
+  <div id="dashboard" class="tab">
+    <h2>Password Health Dashboard</h2>
+    <div id="passwordChartContainer">
+      <canvas id="passwordChart"></canvas>
+    </div>
+  </div>
+
+  <div id="accounts" class="tab">
+    <h2>Manage Accounts</h2>
+    <button class="modal-btn" onclick="createAccountModal()">Create New Account</button>
+    <button class="modal-btn" onclick="changeProfilePictureModal()">Change Profile Picture</button>
+    <button class="modal-btn btn-delete" onclick="confirmDeleteAllAccountsModal()">Delete All Accounts</button>
+    <h3>Current Account: <span id="currentUser"></span></h3>
+    <div class="account-delete-section">
+      <h3>Delete Account</h3>
+      <select id="accountDeleteSelect" aria-label="Select Account to Delete">
+        <option value="" disabled selected>Select Account</option>
+      </select>
+      <button class="btn-delete" onclick="confirmDeleteAccount()">Delete Selected Account</button>
+    </div>
+  </div>
+
+  <div id="settings" class="tab">
+    <h2>Settings</h2>
+    <button class="modal-btn" onclick="toggleTheme()">Toggle Theme</button>
+    <button class="modal-btn" onclick="toggleParticles()">Toggle Particles</button>
+    <button class="modal-btn" onclick="setupMfa()">Setup MFA</button>
+    <button class="modal-btn" onclick="openBackupModal()">Backup Vault</button>
+    <button class="modal-btn" onclick="openRestoreModal()">Restore Vault</button>
+    <button class="modal-btn" onclick="resetMasterPasswordModal()">Reset Master Password</button>
+    <button class="modal-btn" onclick="confirmDeleteAllPasswords()">Delete All Passwords</button>
+    <div id="categoryManager">
+      <h3>Manage Categories</h3>
+      <input type="text" id="newCategory" placeholder="New Category" aria-label="New Category">
+      <button class="modal-btn" onclick="addCategory()">Add Category</button>
+      <select id="categorySelect" aria-label="Select Category">
+        <option value="" disabled selected>Select Category to Delete</option>
+      </select>
+      <button class="modal-btn btn-delete" onclick="deleteCategory()">Delete Category</button>
+    </div>
+    <div id="auditLog">
+      <h3>Audit Log</h3>
+      <ul id="auditLogList"></ul>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<button class="open-login-btn" id="openLoginBtn" onclick="openLoginModal()">Open Login</button>
+
+<script>
+// === VARIABLES ===
+let users = JSON.parse(localStorage.getItem('users') || '{}');
+let currentUser = null;
+let passwords = [];
+let editIndex = null;
+let particlesEnabled = true;
+let particleArray = [];
+let deleteCallback = null;
+let deleteAccountUsername = null;
+const defaultProfilePic = 'Images/fe48a763-a358-45a5-81bd-77c0a70330ee.webp';
+let categories = JSON.parse(localStorage.getItem('categories') || '[]');
+let auditLog = JSON.parse(localStorage.getItem('auditLog') || '[]');
+const mfaSecrets = JSON.parse(localStorage.getItem('mfaSecrets') || '{}');
+const shareLinks = JSON.parse(localStorage.getItem('shareLinks') || '{}');
+
+// === UTILITY FUNCTIONS ===
+function showToast(msg, duration = 2000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).classList.remove('active');
+  const modal = document.getElementById(modalId);
+  modal.querySelectorAll('input').forEach(input => input.value = '');
+  modal.querySelectorAll('.error-message').forEach(error => error.style.display = 'none');
+}
+
+function closeLoginModal() {
+  closeModal('loginModal');
+  document.querySelector('.sidebar').style.display = 'none';
+  document.querySelector('.main').style.display = 'none';
+  document.getElementById('openLoginBtn').style.display = 'block';
+}
+
+function openLoginModal() {
+  document.getElementById('loginModal').classList.add('active');
+  document.getElementById('openLoginBtn').style.display = 'none';
+  updateUserSelect();
+}
+
+// === ENCRYPTION ===
+function encryptData(data, key) {
+  return CryptoJS.AES.encrypt(JSON.stringify(data), key).toString();
+}
+
+function decryptData(encrypted, key) {
+  try {
+    const bytes = CryptoJS.AES.decrypt(encrypted, key);
+    return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+  } catch (e) {
+    return null;
+  }
+}
+
+// === THEME PERSISTENCE ===
+function toggleTheme() {
+  document.body.classList.toggle('light');
+  localStorage.setItem('theme', document.body.classList.contains('light') ? 'light' : 'dark');
+  logAudit('Theme toggled to ' + (document.body.classList.contains('light') ? 'light' : 'dark'));
+}
+
+window.onload = () => {
+  const theme = localStorage.getItem('theme') || 'dark';
+  if (theme === 'light') document.body.classList.add('light');
+  updateUserSelect();
+  updateCategorySelect();
+  if (Object.keys(users).length === 0) {
+    document.getElementById('createAccountModal').classList.add('active');
+    document.getElementById('openLoginBtn').style.display = 'none';
+  } else {
+    document.getElementById('loginModal').classList.add('active');
+    document.getElementById('openLoginBtn').style.display = 'none';
+  }
+};
+
+// === PASSWORD GENERATOR ===
+function openGeneratePasswordModal() {
+  document.getElementById('generatePasswordModal').classList.add('active');
+}
+
+function generatePassword() {
+  const length = parseInt(document.getElementById('passwordLength').value);
+  const useUppercase = document.getElementById('useUppercase').checked;
+  const useLowercase = document.getElementById('useLowercase').checked;
+  const useNumbers = document.getElementById('useNumbers').checked;
+  const useSpecial = document.getElementById('useSpecial').checked;
+
+  if (!useUppercase && !useLowercase && !useNumbers && !useSpecial) {
+    showToast('Select at least one character type');
+    return;
+  }
+
+  if (length < 8 || length > 50 || isNaN(length)) {
+    showToast('Password length must be between 8 and 50');
+    return;
+  }
+
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const numbers = '0123456789';
+  const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+  let chars = '';
+  if (useUppercase) chars += uppercase;
+  if (useLowercase) chars += lowercase;
+  if (useNumbers) chars += numbers;
+  if (useSpecial) chars += special;
+
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * chars.length);
+    password += chars[randomIndex];
+  }
+
+  document.getElementById('passwordAdd').value = password;
+  updateStrengthAdd();
+  closeModal('generatePasswordModal');
+  showToast('Password generated');
+}
+
+// === PASSWORD STRENGTH ===
+function strengthScore(p) {
+  let s = 0;
+  if (p.length >= 8) s++;
+  if (/[A-Z]/.test(p)) s++;
+  if (/[0-9]/.test(p)) s++;
+  if (/[^A-Za-z0-9]/.test(p)) s++;
+  return s;
+}
+
+function strengthColor(s) {
+  return ['#ef4444', '#f59e0b', '#facc15', '#10b981', '#3b82f6'][s];
+}
+
+function updateStrengthAdd() {
+  let pwd = document.getElementById('passwordAdd').value;
+  let s = strengthScore(pwd);
+  let bar = document.getElementById('strengthBarAdd');
+  bar.style.width = (s / 4 * 100) + '%';
+  bar.style.background = strengthColor(s);
+}
+
+function updateStrengthEdit() {
+  let pwd = document.getElementById('passwordEdit').value;
+  let s = strengthScore(pwd);
+  let bar = document.getElementById('strengthBarEdit');
+  bar.style.width = (s / 4 * 100) + '%';
+  bar.style.background = strengthColor(s);
+}
+
+// === PASSWORD HEALTH DASHBOARD ===
+function updatePasswordHealthDashboard() {
+  const ctx = document.getElementById('passwordChart').getContext('2d');
+  let strong = 0, medium = 0, weak = 0;
+  const reused = new Set();
+  const duplicates = new Set();
+
+  passwords.forEach(p => {
+    const score = strengthScore(p.password);
+    if (score >= 3) strong++;
+    else if (score === 2) medium++;
+    else weak++;
+    if (reused.has(p.password)) duplicates.add(p.password);
+    else reused.add(p.password);
+  });
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Strong', 'Medium', 'Weak'],
+      datasets: [{
+        label: 'Password Strength',
+        data: [strong, medium, weak],
+        backgroundColor: ['#10b981', '#facc15', '#ef4444'],
+        borderColor: ['#fff', '#fff', '#fff'],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { 
+          display: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: document.body.classList.contains('light') ? '#1e1e2f' : '#f9fafb',
+            stepSize: 1
+          },
+          title: {
+            display: true,
+            text: 'Number of Passwords',
+            color: document.body.classList.contains('light') ? '#1e1e2f' : '#f9fafb'
+          }
+        },
+        x: {
+          ticks: {
+            color: document.body.classList.contains('light') ? '#1e1e2f' : '#f9fafb'
+          }
+        }
+      }
+    }
+  });
+
+  const weakCount = weak;
+  const reusedCount = duplicates.size;
+  const expiredCount = passwords.filter(p => isPasswordExpired(p)).length;
+  showToast(`Password Health: ${weakCount} weak, ${reusedCount} reused, ${expiredCount} expired`, 3000);
+}
+
+// === PASSWORD EXPIRY ===
+function isPasswordExpired(p) {
+  if (!p.expiration || !p.createdAt) return false;
+  const created = new Date(p.createdAt);
+  const now = new Date();
+  const diffDays = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+  return diffDays >= parseInt(p.expiration);
+}
+
+function checkPasswordExpirations() {
+  passwords.forEach(p => {
+    if (!p.createdAt) p.createdAt = new Date().toISOString();
+    const daysLeft = getDaysLeft(p);
+    if (daysLeft <= 7 && daysLeft > 0) {
+      showToast(`Password for ${p.site} expires in ${daysLeft} days`);
+    } else if (isPasswordExpired(p)) {
+      showToast(`Password for ${p.site} has expired`);
+    }
+  });
+}
+
+function getDaysLeft(p) {
+  if (!p.expiration || !p.createdAt) return Infinity;
+  const created = new Date(p.createdAt);
+  const now = new Date();
+  const diffDays = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+  return parseInt(p.expiration) - diffDays;
+}
+
+// === VAULT ===
+function saveVault() {
+  if (currentUser) {
+    users[currentUser].passwords = encryptData(passwords, users[currentUser].masterPassword);
+    localStorage.setItem('users', JSON.stringify(users));
+  }
+}
+
+function loadVault() {
+  if (currentUser && users[currentUser].passwords) {
+    const decrypted = decryptData(users[currentUser].passwords, users[currentUser].masterPassword);
+    passwords = decrypted || [];
+  } else {
+    passwords = [];
+  }
+}
+
+function renderVault(filteredPasswords = passwords) {
+  const vault = document.getElementById('vault');
+  vault.innerHTML = '<input type="text" id="searchBar" placeholder="Search by site, username, or category" aria-label="Search">';
+  document.getElementById('searchBar').addEventListener('input', filterVault);
+  filteredPasswords.forEach((p, i) => {
+    let card = document.createElement('div');
+    card.className = `vault-card ${isPasswordExpired(p) ? 'expired' : getDaysLeft(p) <= 7 ? 'expiring-soon' : ''}`;
+    card.draggable = true;
+    card.ondragstart = e => { e.dataTransfer.setData('text/plain', i); };
+    card.ondragover = e => { e.preventDefault(); };
+    card.ondrop = e => {
+      const from = parseInt(e.dataTransfer.getData('text/plain'));
+      const to = i;
+      if (from !== to) {
+        let tmp = passwords[from];
+        passwords.splice(from, 1);
+        passwords.splice(to, 0, tmp);
+        saveVault();
+        renderVault();
+        logAudit(`Reordered password for ${tmp.site}`);
+      }
+    };
+    card.innerHTML = `
+      <div class="vault-item"><b>Site:</b> <span>${p.site}</span></div>
+      <div class="vault-item"><b>Username:</b> <span>${p.user}</span></div>
+      <div class="vault-item"><b>Email:</b> <span>${p.email || ''}</span></div>
+      <div class="vault-item"><b>Password:</b>
+        <div class="password-field">
+          <input type="password" value="${p.password}" readonly>
+          <button class="show-pass-btn" onclick="togglePassword(this)">👁️</button>
+        </div>
+      </div>
+      <div class="vault-item"><b>Category:</b> <span>${p.category || ''}</span></div>
+      <div class="vault-item"><b>Expire:</b> <span>${p.expiration || 90} days</span></div>
+      <div class="vault-item actions">
+        <span class="drag-handle">☰</span>
+        <button onclick="copyPassword('${p.password}')" class="btn-copy" aria-label="Copy Password">📋</button>
+        <button onclick="editPassword(${i})" class="btn-edit" aria-label="Edit Password">✏️</button>
+        <button onclick="confirmDeletePassword(${i})" class="btn-delete" aria-label="Delete Password">🗑️</button>
+        <button onclick="autofillPassword('${p.site}', '${p.user}', '${p.password}')" class="autofill-btn" aria-label="Autofill Password">↗️</button>
+        <button onclick="sharePassword(${i})" class="share-btn" aria-label="Share Password">🔗</button>
+      </div>
+    `;
+    vault.appendChild(card);
+    setTimeout(() => { card.classList.add('show'); }, 50 * i);
+  });
+  checkPasswordExpirations();
+}
+
+// === SEARCH AND FILTER ===
+function filterVault() {
+  const query = document.getElementById('searchBar').value.toLowerCase();
+  const filtered = passwords.filter(p =>
+    p.site.toLowerCase().includes(query) ||
+    p.user.toLowerCase().includes(query) ||
+    (p.category && p.category.toLowerCase().includes(query))
+  );
+  renderVault(filtered);
+}
+
+// === PASSWORD ACTIONS ===
+function togglePassword(btn) {
+  let inp = btn.previousElementSibling;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function copyPassword(pwd) {
+  navigator.clipboard.writeText(pwd);
+  showToast('Copied');
+  logAudit('Copied password');
+}
+
+function editPassword(i) {
+  editIndex = i;
+  const p = passwords[i];
+  document.getElementById('siteEdit').value = p.site;
+  document.getElementById('usernameEdit').value = p.user;
+  document.getElementById('emailEdit').value = p.email;
+  document.getElementById('categoryEdit').value = p.category;
+  document.getElementById('passwordEdit').value = p.password;
+  document.getElementById('expirationEdit').value = p.expiration;
+  document.getElementById('editModal').classList.add('active');
+}
+
+function savePasswordEdit() {
+  if (editIndex === null) return;
+  const site = document.getElementById('siteEdit').value.trim();
+  const user = document.getElementById('usernameEdit').value.trim();
+  const password = document.getElementById('passwordEdit').value;
+  if (!site || !user || !password) {
+    showToast('Site, Username, and Password required');
+    return;
+  }
+  const expiration = document.getElementById('expirationEdit').value;
+  if (expiration && (isNaN(expiration) || expiration < 1)) {
+    showToast('Expiration days must be a positive number');
+    return;
+  }
+  passwords[editIndex] = {
+    site,
+    user,
+    email: document.getElementById('emailEdit').value,
+    category: document.getElementById('categoryEdit').value,
+    password,
+    expiration,
+    createdAt: passwords[editIndex].createdAt
+  };
+  saveVault();
+  renderVault();
+  logAudit(`Edited password for ${passwords[editIndex].site}`);
+  closeModal('editModal');
+  showToast('Password saved');
+}
+
+function savePasswordAdd() {
+  const site = document.getElementById('siteAdd').value.trim();
+  const user = document.getElementById('usernameAdd').value.trim();
+  const email = document.getElementById('emailAdd').value.trim();
+  const cat = document.getElementById('categoryAdd').value;
+  const pw = document.getElementById('passwordAdd').value;
+  const exp = document.getElementById('expirationAdd').value;
+  if (!site || !user || !pw) {
+    showToast('Site, Username, Password required');
+    return;
+  }
+  if (exp && (isNaN(exp) || exp < 1)) {
+    showToast('Expiration days must be a positive number');
+    return;
+  }
+  passwords.push({ site, user, email, category: cat, password: pw, expiration: exp, createdAt: new Date().toISOString() });
+  saveVault();
+  renderVault();
+  logAudit(`Added password for ${site}`);
+  showToast('Saved');
+  document.querySelectorAll('#add input').forEach(i => i.value = '');
+  document.getElementById('categoryAdd').value = '';
+  document.getElementById('expirationAdd').value = 90;
+}
+
+// === DELETE CONFIRMATIONS ===
+function confirmDeletePassword(i) {
+  deleteCallback = () => {
+    const site = passwords[i].site;
+    passwords.splice(i, 1);
+    saveVault();
+    renderVault();
+    logAudit(`Deleted password for ${site}`);
+    showToast('Deleted');
+    closeDeletePrompt();
+  };
+  showDeletePrompt(`Delete password for "${passwords[i].site}"?`);
+}
+
+function confirmDeleteAllPasswords() {
+  if (passwords.length === 0) {
+    showToast('No passwords to delete');
+    return;
+  }
+  deleteCallback = () => {
+    passwords = [];
+    saveVault();
+    renderVault();
+    logAudit('Deleted all passwords');
+    showToast('All deleted');
+    closeDeletePrompt();
+  };
+  showDeletePrompt('Delete ALL passwords?');
+}
+
+function showDeletePrompt(text) {
+  document.getElementById('deletePromptText').textContent = text;
+  document.getElementById('deletePrompt').classList.add('active');
+}
+
+function closeDeletePrompt() {
+  document.getElementById('deletePrompt').classList.remove('active');
+  deleteCallback = null;
+}
+
+document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+  if (deleteCallback) deleteCallback();
+});
+
+// === ACCOUNT MANAGEMENT ===
+function updateUserSelect() {
+  const loginSelect = document.getElementById('loginUsername');
+  const deleteSelect = document.getElementById('accountDeleteSelect');
+  loginSelect.innerHTML = '<option value="" disabled selected>Select Username</option>';
+  deleteSelect.innerHTML = '<option value="" disabled selected>Select Account</option>';
+  const lastUser = localStorage.getItem('lastUser');
+  Object.keys(users).forEach(username => {
+    const loginOption = document.createElement('option');
+    loginOption.value = username;
+    loginOption.textContent = username;
+    if (username === lastUser) loginOption.selected = true;
+    loginSelect.appendChild(loginOption);
+    const deleteOption = document.createElement('option');
+    deleteOption.value = username;
+    deleteOption.textContent = username;
+    deleteSelect.appendChild(deleteOption);
+  });
+  document.getElementById('mfaCode').style.display = users[lastUser]?.mfaEnabled ? 'block' : 'none';
+}
+
+function createAccountModal() {
+  closeModal('loginModal');
+  document.getElementById('createAccountModal').classList.add('active');
+  document.getElementById('openLoginBtn').style.display = 'none';
+}
+
+function createAccount() {
+  const username = document.getElementById('createUsername').value.trim();
+  const pw = document.getElementById('createPassword').value;
+  const cpw = document.getElementById('confirmPassword').value;
+  const fileInput = document.getElementById('profilePicture');
+
+  const usernameError = document.getElementById('usernameError');
+  const passwordError = document.getElementById('passwordError');
+  const confirmPasswordError = document.getElementById('confirmPasswordError');
+
+  usernameError.style.display = username.length < 3 ? 'block' : 'none';
+  passwordError.style.display = pw.length < 8 ? 'block' : 'none';
+  confirmPasswordError.style.display = pw !== cpw ? 'block' : 'none';
+
+  if (username.length < 3 || pw.length < 8 || pw !== cpw) {
+    return;
+  }
+  if (users[username]) {
+    showToast('Username already exists');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const profilePic = fileInput.files[0] ? e.target.result : defaultProfilePic;
+    users[username] = { masterPassword: pw, passwords: encryptData([], pw), profilePicture: profilePic, mfaEnabled: false };
+    localStorage.setItem('users', JSON.stringify(users));
+    localStorage.setItem('lastUser', username);
+    currentUser = username;
+    passwords = [];
+    document.getElementById('profileImage').src = profilePic;
+    document.getElementById('sidebarUsername').textContent = currentUser;
+    closeModal('createAccountModal');
+    document.querySelector('.sidebar').style.display = 'flex';
+    document.querySelector('.main').style.display = 'block';
+    document.getElementById('currentUser').textContent = currentUser;
+    updateUserSelect();
+    updateCategorySelect();
+    logAudit(`Created account ${username}`);
+    showToast('Account created');
+    renderVault();
+    initParticles();
+  };
+  if (fileInput.files[0]) {
+    reader.readAsDataURL(fileInput.files[0]);
+  } else {
+    reader.onload({ target: { result: defaultProfilePic } });
+  }
+}
+
+function toggleLoginPassword() {
+  const inp = document.getElementById('loginPassword');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function checkLogin() {
+  const username = document.getElementById('loginUsername').value;
+  const pw = document.getElementById('loginPassword').value;
+  const mfaCode = document.getElementById('mfaCode').value;
+  const loginBtn = document.getElementById('loginBtn');
+  loginBtn.disabled = true;
+  loginBtn.classList.add('loading');
+  if (!username || !pw) {
+    showToast('Username and password required');
+    loginBtn.disabled = false;
+    loginBtn.classList.remove('loading');
+    return;
+  }
+  await new Promise(resolve => setTimeout(resolve, 500));
+  if (!users[username]) {
+    showToast('Username not found');
+    loginBtn.disabled = false;
+    loginBtn.classList.remove('loading');
+    return;
+  }
+  if (users[username].masterPassword === pw) {
+    if (users[username].mfaEnabled) {
+      if (!mfaCode) {
+        showToast('Please enter MFA code');
+        loginBtn.disabled = false;
+        loginBtn.classList.remove('loading');
+        return;
+      }
+      const verified = otplib.authenticator.verify({
+        secret: mfaSecrets[username],
+        token: mfaCode
+      });
+      if (!verified) {
+        showToast('Invalid MFA code');
+        loginBtn.disabled = false;
+        loginBtn.classList.remove('loading');
+        return;
+      }
+    }
+    localStorage.setItem('lastUser', username);
+    currentUser = username;
+    loadVault();
+    document.getElementById('profileImage').src = users[currentUser].profilePicture || defaultProfilePic;
+    document.getElementById('sidebarUsername').textContent = currentUser;
+    closeModal('loginModal');
+    document.querySelector('.sidebar').style.display = 'flex';
+    document.querySelector('.main').style.display = 'block';
+    document.getElementById('currentUser').textContent = currentUser;
+    document.getElementById('openLoginBtn').style.display = 'none';
+    logAudit(`Logged in as ${username}`);
+    showToast('Login successful');
+    renderVault();
+    initParticles();
+  } else {
+    showToast('Invalid password');
+    loginBtn.disabled = false;
+    loginBtn.classList.remove('loading');
+  }
+}
+
+function switchAccount(btn) {
+  if (btn) btn.classList.remove('active');
+  currentUser = null;
+  passwords = [];
+  document.querySelector('.sidebar').style.display = 'none';
+  document.querySelector('.main').style.display = 'none';
+  document.getElementById('loginModal').classList.add('active');
+  document.getElementById('openLoginBtn').style.display = 'none';
+  updateUserSelect();
+  logAudit('Switched account');
+  showToast('Switched account');
+}
+
+function logout(btn) {
+  if (btn) btn.classList.remove('active');
+  currentUser = null;
+  passwords = [];
+  document.querySelector('.sidebar').style.display = 'none';
+  document.querySelector('.main').style.display = 'none';
+  document.getElementById('loginModal').classList.add('active');
+  document.getElementById('openLoginBtn').style.display = 'none';
+  updateUserSelect();
+  logAudit('Logged out');
+  showToast('Logged out');
+}
+
+function confirmDeleteAccount() {
+  const username = document.getElementById('accountDeleteSelect').value;
+  if (!username) {
+    showToast('Please select an account');
+    return;
+  }
+  deleteAccountUsername = username;
+  document.getElementById('deleteAccountName').textContent = `Delete account "${username}"?`;
+  document.getElementById('deleteAccountModal').classList.add('active');
+}
+
+function confirmDeleteSelectedAccount() {
+  const pw = document.getElementById('deleteAccountPassword').value;
+  if (!pw) {
+    showToast('Please enter the master password');
+    return;
+  }
+  if (users[deleteAccountUsername].masterPassword === pw) {
+    delete users[deleteAccountUsername];
+    delete mfaSecrets[deleteAccountUsername];
+    localStorage.setItem('users', JSON.stringify(users));
+    localStorage.setItem('mfaSecrets', JSON.stringify(mfaSecrets));
+    if (deleteAccountUsername === currentUser) {
+      currentUser = null;
+      passwords = [];
+      document.getElementById('profileImage').src = defaultProfilePic;
+      document.getElementById('sidebarUsername').textContent = 'User';
+      document.querySelector('.sidebar').style.display = 'none';
+      document.querySelector('.main').style.display = 'none';
+      document.getElementById('loginModal').classList.add('active');
+      document.getElementById('openLoginBtn').style.display = 'none';
+      localStorage.removeItem('lastUser');
+    }
+    updateUserSelect();
+    logAudit(`Deleted account ${deleteAccountUsername}`);
+    showToast('Account deleted');
+    closeModal('deleteAccountModal');
+  } else {
+    showToast('Invalid password');
+  }
+}
+
+function confirmDeleteAllAccountsModal() {
+  if (Object.keys(users).length === 0) {
+    showToast('No accounts to delete');
+    return;
+  }
+  document.getElementById('deleteAllAccountsModal').classList.add('active');
+}
+
+function confirmDeleteAllAccounts() {
+  const pw = document.getElementById('deleteAllAccountsPassword').value;
+  if (!currentUser) {
+    showToast('No user logged in');
+    return;
+  }
+  if (!pw) {
+    showToast('Please enter the master password');
+    return;
+  }
+  if (users[currentUser].masterPassword === pw) {
+    users = {};
+    localStorage.setItem('users', JSON.stringify(users));
+    localStorage.setItem('mfaSecrets', JSON.stringify({}));
+    localStorage.removeItem('lastUser');
+    currentUser = null;
+    passwords = [];
+    document.getElementById('profileImage').src = defaultProfilePic;
+    document.getElementById('sidebarUsername').textContent = 'User';
+    document.querySelector('.sidebar').style.display = 'none';
+    document.querySelector('.main').style.display = 'none';
+    closeModal('deleteAllAccountsModal');
+    document.getElementById('createAccountModal').classList.add('active');
+    document.getElementById('openLoginBtn').style.display = 'none';
+    updateUserSelect();
+    logAudit('Deleted all accounts');
+    showToast('All accounts deleted');
+  } else {
+    showToast('Invalid password');
+  }
+}
+
+function changeProfilePictureModal() {
+  document.getElementById('profilePictureModal').classList.add('active');
+}
+
+function changeProfilePicture() {
+  const fileInput = document.getElementById('newProfilePicture');
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    if (currentUser) {
+      users[currentUser].profilePicture = e.target.result;
+      localStorage.setItem('users', JSON.stringify(users));
+      document.getElementById('profileImage').src = e.target.result;
+      closeModal('profilePictureModal');
+      logAudit('Changed profile picture');
+      showToast('Profile picture updated');
+    }
+  };
+  if (fileInput.files[0]) {
+    reader.readAsDataURL(fileInput.files[0]);
+  } else {
+    showToast('No file selected');
+  }
+}
+
+function resetMasterPasswordModal() {
+  document.getElementById('resetModal').classList.add('active');
+}
+
+function resetMasterPassword() {
+  const pw = document.getElementById('newMasterPassword').value;
+  const cpw = document.getElementById('confirmNewMasterPassword').value;
+  const passwordError = document.getElementById('newPasswordError');
+  const confirmPasswordError = document.getElementById('confirmNewPasswordError');
+
+  passwordError.style.display = pw.length < 8 ? 'block' : 'none';
+  confirmPasswordError.style.display = pw !== cpw ? 'block' : 'none';
+
+  if (pw.length < 8 || pw !== cpw) {
+    return;
+  }
+  if (currentUser) {
+    const decryptedPasswords = decryptData(users[currentUser].passwords, users[currentUser].masterPassword);
+    users[currentUser].masterPassword = pw;
+    users[currentUser].passwords = encryptData(decryptedPasswords || [], pw);
+    localStorage.setItem('users', JSON.stringify(users));
+    closeModal('resetModal');
+    logAudit('Reset master password');
+    showToast('Master password reset');
+  }
+}
+
+// === MFA ===
+function setupMfa() {
+  if (!currentUser) {
+    showToast('No user logged in');
+    return;
+  }
+  const secret = otplib.authenticator.generateSecret();
+  mfaSecrets[currentUser] = secret;
+  localStorage.setItem('mfaSecrets', JSON.stringify(mfaSecrets));
+  const qrCode = document.getElementById('mfaQrCode');
+  qrCode.innerHTML = '';
+  const otpauth = otplib.authenticator.keyuri(currentUser, 'Anima', secret);
+  new QRCode(qrCode, {
+    text: otpauth,
+    width: 200,
+    height: 200
+  });
+  document.getElementById('mfaSecret').value = secret;
+  document.getElementById('mfaModal').classList.add('active');
+}
+
+function copyMfaSecret() {
+  const secret = document.getElementById('mfaSecret').value;
+  navigator.clipboard.writeText(secret);
+  showToast('MFA secret copied');
+}
+
+function enableMfa() {
+  if (currentUser) {
+    users[currentUser].mfaEnabled = true;
+    localStorage.setItem('users', JSON.stringify(users));
+    closeModal('mfaModal');
+    logAudit('Enabled MFA');
+    showToast('MFA enabled');
+    updateUserSelect();
+  }
+}
+
+// === BACKUP AND RESTORE ===
+function openBackupModal() {
+  document.getElementById('backupModal').classList.add('active');
+}
+
+function openRestoreModal() {
+  document.getElementById('restoreModal').classList.add('active');
+}
+
+function backupVault() {
+  const pw = document.getElementById('backupPassword').value;
+  if (!currentUser || !pw) {
+    showToast('Master password required');
+    return;
+  }
+  if (pw !== users[currentUser].masterPassword) {
+    showToast('Invalid master password');
+    return;
+  }
+  const encrypted = encryptData(passwords, pw);
+  const blob = new Blob([encrypted], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `anima_backup_${currentUser}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  closeModal('backupModal');
+  logAudit('Backed up vault');
+  showToast('Backup created');
+}
+
+function restoreVault() {
+  const fileInput = document.getElementById('restoreFile');
+  const pw = document.getElementById('restorePassword').value;
+  if (!currentUser || !pw) {
+    showToast('Master password required');
+    return;
+  }
+  if (pw !== users[currentUser].masterPassword) {
+    showToast('Invalid master password');
+    return;
+  }
+  if (!fileInput.files[0]) {
+    showToast('No file selected');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const decrypted = decryptData(e.target.result, pw);
+      if (decrypted) {
+        passwords = decrypted;
+        saveVault();
+        renderVault();
+        closeModal('restoreModal');
+        logAudit('Restored vault');
+        showToast('Vault restored');
+      } else {
+        showToast('Invalid backup file or password');
+      }
+    } catch (e) {
+      showToast('Invalid backup file');
+    }
+  };
+  reader.readAsText(fileInput.files[0]);
+}
+
+// === AUTO-FILL ===
+function autofillPassword(site, username, password) {
+  showToast(`Auto-filling for ${site}: Username: ${username}, Password: ${password}`);
+  logAudit(`Auto-filled password for ${site}`);
+}
+
+// === SECURE SHARING ===
+function sharePassword(i) {
+  const p = passwords[i];
+  const expirationDays = parseInt(document.getElementById('shareExpiration')?.value || 1);
+  const shareId = Math.random().toString(36).substring(2, 10);
+  const expirationDate = new Date();
+  expirationDate.setDate(expirationDate.getDate() + expirationDays);
+  shareLinks[shareId] = { ...p, expiresAt: expirationDate.toISOString() };
+  localStorage.setItem('shareLinks', JSON.stringify(shareLinks));
+  const shareUrl = `${window.location.origin}/share#${shareId}`;
+  const qrCode = document.getElementById('shareQrCode');
+  qrCode.innerHTML = '';
+  new QRCode(qrCode, {
+    text: shareUrl,
+    width: 200,
+    height: 200
+  });
+  document.getElementById('shareLink').value = shareUrl;
+  document.getElementById('shareModal').classList.add('active');
+  logAudit(`Shared password for ${p.site}`);
+}
+
+function copyShareLink() {
+  const link = document.getElementById('shareLink').value;
+  navigator.clipboard.writeText(link);
+  showToast('Share link copied');
+}
+
+window.addEventListener('hashchange', () => {
+  const shareId = window.location.hash.substring(1);
+  if (shareLinks[shareId]) {
+    const { site, user, password, expiresAt } = shareLinks[shareId];
+    if (new Date() > new Date(expiresAt)) {
+      showToast('Share link expired');
+      delete shareLinks[shareId];
+      localStorage.setItem('shareLinks', JSON.stringify(shareLinks));
+      return;
+    }
+    showToast(`Shared Password: Site: ${site}, Username: ${user}, Password: ${password}`);
+  }
+});
+
+// === CATEGORY MANAGEMENT ===
+function updateCategorySelect() {
+  const addSelect = document.getElementById('categoryAdd');
+  const deleteSelect = document.getElementById('categorySelect');
+  addSelect.innerHTML = '<option value="" disabled selected>Select Category</option>';
+  deleteSelect.innerHTML = '<option value="" disabled selected>Select Category to Delete</option>';
+  categories.forEach(cat => {
+    const option1 = document.createElement('option');
+    option1.value = cat;
+    option1.textContent = cat;
+    addSelect.appendChild(option1);
+    const option2 = document.createElement('option');
+    option2.value = cat;
+    option2.textContent = cat;
+    deleteSelect.appendChild(option2);
+  });
+}
+
+function addCategory() {
+  const newCat = document.getElementById('newCategory').value.trim();
+  if (!newCat) {
+    showToast('Category name required');
+    return;
+  }
+  if (categories.includes(newCat)) {
+    showToast('Category already exists');
+    return;
+  }
+  categories.push(newCat);
+  localStorage.setItem('categories', JSON.stringify(categories));
+  updateCategorySelect();
+  logAudit(`Added category ${newCat}`);
+  showToast('Category added');
+  document.getElementById('newCategory').value = '';
+}
+
+function deleteCategory() {
+  const cat = document.getElementById('categorySelect').value;
+  if (!cat) {
+    showToast('Select a category to delete');
+    return;
+  }
+  if (passwords.some(p => p.category === cat)) {
+    showToast('Cannot delete category in use');
+    return;
+  }
+  categories = categories.filter(c => c !== cat);
+  localStorage.setItem('categories', JSON.stringify(categories));
+  updateCategorySelect();
+  logAudit(`Deleted category ${cat}`);
+  showToast('Category deleted');
+}
+
+// === AUDIT LOG ===
+function logAudit(action) {
+  auditLog.push({ action, timestamp: new Date().toISOString() });
+  localStorage.setItem('auditLog', JSON.stringify(auditLog));
+  renderAuditLog();
+}
+
+function renderAuditLog() {
+  const logList = document.getElementById('auditLogList');
+  logList.innerHTML = '';
+  auditLog.forEach(log => {
+    const li = document.createElement('li');
+    li.textContent = `[${new Date(log.timestamp).toLocaleString()}] ${log.action}`;
+    logList.appendChild(li);
+  });
+}
+
+// === TABS ===
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(tab).classList.add('active');
+  document.querySelectorAll('.sidebar button').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  if (tab === 'accounts') {
+    updateUserSelect();
+  } else if (tab === 'settings') {
+    renderAuditLog();
+    updateCategorySelect();
+  } else if (tab === 'vault') {
+    renderVault();
+  } else if (tab === 'dashboard') {
+    updatePasswordHealthDashboard();
+  }
+}
+
+// === PARTICLES ===
+function initParticles() {
+  const canvas = document.getElementById('particleCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  particleArray = [];
+  for (let i = 0; i < 150; i++) {
+    particleArray.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 2 + 1,
+      vx: (Math.random() - 0.5) * 0.7,
+      vy: (Math.random() - 0.5) * 0.7,
+      color: `hsl(${Math.random() * 360}, 70%, 60%)`
+    });
+  }
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (particlesEnabled) {
+      particleArray.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.x < 0) p.x = canvas.width;
+        if (p.y > canvas.height) p.y = 0;
+        if (p.y < 0) p.y = canvas.height;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+      });
+    }
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+function toggleParticles() {
+  particlesEnabled = !particlesEnabled;
+  if (!particlesEnabled) {
+    const c = document.getElementById('particleCanvas');
+    c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  }
+  logAudit('Toggled particles ' + (particlesEnabled ? 'on' : 'off'));
+}
+
+window.addEventListener('resize', () => {
+  const c = document.getElementById('particleCanvas');
+  c.width = window.innerWidth;
+  c.height = window.innerHeight;
+});
+</script>
+
+</body>
+</html>
