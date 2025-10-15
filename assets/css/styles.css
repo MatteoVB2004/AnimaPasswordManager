@@ -119,8 +119,9 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none
 #passwordChartContainer{width:100%;height:100%;position:absolute;top:0;left:0;margin:0;padding:30px;}
 #passwordChartContainer canvas{width:100% !important;height:100% !important;}
 /* Android-friendly dashboard sizing */
-.android #passwordChartContainer{position:relative;top:auto;left:auto;height:45vh;min-height:260px;padding:12px;margin-top:8px;}
-.android #passwordChartContainer canvas{width:100% !important;height:100% !important;}
+.android #passwordChartContainer{position:relative;top:auto;left:auto;height:400px;max-height:50vh;padding:15px;margin-top:8px;background:rgba(0,0,0,0.2);border-radius:15px;}
+body.light.android #passwordChartContainer{background:rgba(0,0,0,0.05);}
+.android #passwordChartContainer canvas{width:100% !important;height:100% !important;max-height:100%;}
 #auditLog{max-height:200px;overflow-y:auto;border:1px solid #222222;padding:10px;border-radius:10px;}
 body.light #auditLog{border:1px solid #999;}
 .search-container{position:relative;margin-bottom:20px;display:flex;align-items:center;}

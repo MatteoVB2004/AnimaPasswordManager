@@ -170,8 +170,13 @@ function updateStrengthEdit() {
 }
 
 // === PASSWORD HEALTH DASHBOARD ===
+let passwordChart = null; // Store chart instance
+
 function updatePasswordHealthDashboard() {
-  const ctx = document.getElementById('passwordChart').getContext('2d');
+  const canvas = document.getElementById('passwordChart');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
   let strong = 0, medium = 0, weak = 0;
   const reused = new Set();
   const duplicates = new Set();
@@ -185,7 +190,13 @@ function updatePasswordHealthDashboard() {
     else reused.add(p.password);
   });
 
-  new Chart(ctx, {
+  // Destroy existing chart before creating new one
+  if (passwordChart) {
+    passwordChart.destroy();
+  }
+
+  // Create new chart
+  passwordChart = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: ['Strong', 'Medium', 'Weak'],
@@ -199,22 +210,44 @@ function updatePasswordHealthDashboard() {
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: false } },
+      maintainAspectRatio: true,
+      aspectRatio: 2,
+      plugins: { 
+        legend: { display: false },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          titleFont: { size: 14 },
+          bodyFont: { size: 13 }
+        }
+      },
       scales: {
         y: {
           beginAtZero: true,
           ticks: {
             color: document.body.classList.contains('light') ? '#1e1e2f' : '#f9fafb',
-            stepSize: 1
+            stepSize: 1,
+            font: { size: 12 }
           },
           title: {
             display: true,
             text: 'Number of Passwords',
-            color: document.body.classList.contains('light') ? '#1e1e2f' : '#f9fafb'
+            color: document.body.classList.contains('light') ? '#1e1e2f' : '#f9fafb',
+            font: { size: 13 }
+          },
+          grid: {
+            color: document.body.classList.contains('light') ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'
           }
         },
         x: {
-          ticks: { color: document.body.classList.contains('light') ? '#1e1e2f' : '#f9fafb' }
+          ticks: { 
+            color: document.body.classList.contains('light') ? '#1e1e2f' : '#f9fafb',
+            font: { size: 12 }
+          },
+          grid: {
+            color: document.body.classList.contains('light') ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'
+          }
         }
       }
     }
@@ -1337,7 +1370,15 @@ function switchTab(tab, btn) {
   if (tab === 'accounts') updateUserSelect();
   else if (tab === 'settings') { renderAuditLog(); updateCategorySelect(); }
   else if (tab === 'vault') renderVault();
-  else if (tab === 'dashboard') updatePasswordHealthDashboard();
+  else if (tab === 'dashboard') {
+    // Small delay on mobile to ensure DOM is ready for chart
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      setTimeout(() => updatePasswordHealthDashboard(), 100);
+    } else {
+      updatePasswordHealthDashboard();
+    }
+  }
   // Sync Android UI if enabled
   if (document.body.classList.contains('android')) {
     syncNavState(tab);
