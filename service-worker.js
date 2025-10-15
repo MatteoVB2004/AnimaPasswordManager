@@ -1,4 +1,4 @@
-const CACHE_NAME = 'anima-cache-v1';
+const CACHE_NAME = 'anima-cache-v2';
 // Resolve asset URLs relative to the SW location to support subpath hosting
 const base = new URL('./', self.location);
 const url = (p) => new URL(p, base).toString();
@@ -9,7 +9,8 @@ const ASSETS = [
   url('./assets/js/app.js'),
   url('./Images/fe48a763-a358-45a5-81bd-77c0a70330ee.webp'),
   url('./Images/icon-192.png'),
-  url('./Images/icon-512.png')
+  url('./Images/icon-512.png'),
+  url('./Images/logo-circular.png')
 ];
 
 self.addEventListener('install', event => {
