@@ -482,6 +482,13 @@ function createAccountModal() {
   document.getElementById('openLoginBtn').style.display = 'none';
 }
 
+function backToLogin() {
+  closeModal('createAccountModal');
+  document.getElementById('loginModal').classList.add('active');
+  document.getElementById('openLoginBtn').style.display = 'none';
+  updateUserSelect();
+}
+
 function createAccount() {
   const username = document.getElementById('createUsername').value.trim();
   const pw = document.getElementById('createPassword').value;
