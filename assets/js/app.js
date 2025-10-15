@@ -274,8 +274,21 @@ function loadVault() {
 
 function renderVault(filteredPasswords = passwords) {
   const vault = document.getElementById('vault');
-  vault.innerHTML = '<input type="text" id="searchBar" placeholder="Search by site, username, or category" aria-label="Search">';
-  document.getElementById('searchBar').addEventListener('input', filterVault);
+  
+  // Preserve search bar if it exists, otherwise create it
+  let searchBar = document.getElementById('searchBar');
+  const searchValue = searchBar ? searchBar.value : '';
+  
+  if (!searchBar) {
+    vault.innerHTML = '<input type="text" id="searchBar" placeholder="Search by site, username, or category" aria-label="Search">';
+    searchBar = document.getElementById('searchBar');
+    searchBar.addEventListener('input', filterVault);
+  }
+  
+  // Remove all vault cards but keep the search bar
+  const cards = vault.querySelectorAll('.vault-card');
+  cards.forEach(card => card.remove());
+  
   filteredPasswords.forEach((p, i) => {
     let card = document.createElement('div');
     card.className = `vault-card ${isPasswordExpired(p) ? 'expired' : getDaysLeft(p) <= 7 ? 'expiring-soon' : ''}`;
