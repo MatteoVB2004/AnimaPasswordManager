@@ -42,6 +42,18 @@ function closeLoginModal() {
   if (bn) bn.style.display = 'none';
 }
 
+function closeCreateAccountModal() {
+  closeModal('createAccountModal');
+  document.querySelector('.sidebar').style.display = 'none';
+  document.querySelector('.main').style.display = 'none';
+  document.getElementById('openLoginBtn').style.display = 'block';
+  // Hide Android bars when not logged in
+  const tb = document.getElementById('topbar');
+  const bn = document.getElementById('bottomNav');
+  if (tb) tb.style.display = 'none';
+  if (bn) bn.style.display = 'none';
+}
+
 function openLoginModal() {
   document.getElementById('loginModal').classList.add('active');
   document.getElementById('openLoginBtn').style.display = 'none';
