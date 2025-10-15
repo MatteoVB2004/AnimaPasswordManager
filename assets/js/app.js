@@ -512,6 +512,7 @@ function createAccountModal() {
   document.getElementById('loginModal').classList.remove('active');
   document.getElementById('createAccountModal').classList.add('active');
   document.getElementById('openLoginBtn').style.display = 'none';
+}
 
 function backToLogin() {
   document.getElementById('createAccountModal').classList.remove('active');
@@ -1140,5 +1141,4 @@ function enableAndroidLayout(initialTab = 'vault') {
 function handleBottomNav(btn, tab) {
   switchTab(tab, null);
   syncNavState(tab);
-}
 }
