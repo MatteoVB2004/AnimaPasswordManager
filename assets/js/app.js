@@ -1168,11 +1168,17 @@ function importCsvFile() {
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
-      const csvContent = e.target.result;
-      const lines = csvContent.split(/\r?\n/).filter(line => line.trim());
+        const csvContent = e.target.result;
       
-      if (lines.length === 0) {
-        showToast('Empty CSV file');
+        if (!csvContent || csvContent.trim().length === 0) {
+          showToast('Empty CSV file');
+          return;
+        }
+      
+        const lines = csvContent.split(/\r?\n/).filter(line => line.trim());
+      
+        if (lines.length === 0) {
+          showToast('No data found in CSV');
         return;
       }
       
@@ -1180,7 +1186,7 @@ function importCsvFile() {
       let importedCount = 0;
       let skippedCount = 0;
       
-      // Parse CSV (handles quoted fields with commas)
+        // Parse CSV (handles quoted fields with commas and escaped quotes)
       function parseCSVLine(line) {
         const result = [];
         let current = '';
@@ -1188,21 +1194,29 @@ function importCsvFile() {
         
         for (let i = 0; i < line.length; i++) {
           const char = line[i];
+            const nextChar = line[i + 1];
           
           if (char === '"') {
-            inQuotes = !inQuotes;
+              // Handle escaped quotes ("")
+              if (inQuotes && nextChar === '"') {
+                current += '"';
+                i++; // Skip next quote
+              } else {
+                inQuotes = !inQuotes;
+              }
           } else if (char === ',' && !inQuotes) {
-            result.push(current.trim());
+              result.push(current.trim().replace(/^"|"$/g, '')); // Remove surrounding quotes
             current = '';
           } else {
             current += char;
           }
         }
-        result.push(current.trim());
+          result.push(current.trim().replace(/^"|"$/g, ''));
         return result;
       }
       
       for (let i = startIndex; i < lines.length; i++) {
+          try {
         const fields = parseCSVLine(lines[i]);
         
         // Dashlane CSV format: url, username, password, note, name, category
@@ -1221,7 +1235,7 @@ function importCsvFile() {
         const category = fields[5] || 'Imported';
         
         // Skip empty entries
-        if (!url && !name) {
+          if ((!url && !name) || !password) {
           skippedCount++;
           continue;
         }
@@ -1240,6 +1254,10 @@ function importCsvFile() {
         
         passwords.push(entry);
         importedCount++;
+          } catch (lineError) {
+            console.error('Error parsing line:', lines[i], lineError);
+            skippedCount++;
+          }
       }
       
       if (importedCount > 0) {
@@ -1258,9 +1276,13 @@ function importCsvFile() {
       
     } catch (error) {
       console.error('CSV import error:', error);
-      showToast('Error parsing CSV file');
+        showToast('Error parsing CSV file: ' + (error.message || 'Unknown error'));
     }
   };
+  
+    reader.onerror = function() {
+      showToast('Error reading file');
+    };
   
   reader.readAsText(fileInput.files[0]);
 }
