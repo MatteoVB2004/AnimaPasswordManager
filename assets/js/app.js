@@ -509,10 +509,12 @@ function updateUserSelect() {
 }
 
 function createAccountModal() {
-}
+  document.getElementById('loginModal').classList.remove('active');
+  document.getElementById('createAccountModal').classList.add('active');
+  document.getElementById('openLoginBtn').style.display = 'none';
 
 function backToLogin() {
-  closeModal('createAccountModal');
+  document.getElementById('createAccountModal').classList.remove('active');
   document.getElementById('loginModal').classList.add('active');
   document.getElementById('openLoginBtn').style.display = 'none';
   updateUserSelect();
@@ -1079,8 +1081,6 @@ function closeCreateAccountModal() {
 }
 
 function createAccountModal() {
-  document.getElementById('createAccountModal').classList.add('active');
-  document.getElementById('openLoginBtn').style.display = 'none';
 }
 
 function toggleParticles() {
@@ -1140,4 +1140,5 @@ function enableAndroidLayout(initialTab = 'vault') {
 function handleBottomNav(btn, tab) {
   switchTab(tab, null);
   syncNavState(tab);
+}
 }
