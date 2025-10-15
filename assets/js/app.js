@@ -510,6 +510,7 @@ function updateUserSelect() {
 
 function createAccountModal() {
   closeModal('loginModal');
+  closeModal('loginModal');
   document.getElementById('createAccountModal').classList.add('active');
   document.getElementById('openLoginBtn').style.display = 'none';
 }
