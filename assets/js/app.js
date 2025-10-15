@@ -15,6 +15,44 @@ let auditLog = JSON.parse(localStorage.getItem('auditLog') || '[]');
 const mfaSecrets = JSON.parse(localStorage.getItem('mfaSecrets') || '{}');
 const shareLinks = JSON.parse(localStorage.getItem('shareLinks') || '{}');
 
+// === CSV IMPORT HELPERS/STATE ===
+let csvImportState = { content: '', delimiter: ',', rows: [] };
+
+function detectCsvDelimiter(sample) {
+  const firstChunk = sample.slice(0, 5000);
+  const counts = {
+    ',': (firstChunk.match(/,/g) || []).length,
+    ';': (firstChunk.match(/;/g) || []).length,
+    '\t': (firstChunk.match(/\t/g) || []).length
+  };
+  let best = ','; let max = counts[','];
+  if (counts[';'] > max) { best = ';'; max = counts[';']; }
+  if (counts['\t'] > max) { best = '\t'; max = counts['\t']; }
+  return best === '\t' ? '\t' : best;
+}
+
+function parseCsvText(text, delim) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+    if (ch === '"') {
+      if (inQuotes && next === '"') { field += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (!inQuotes && (ch === '\n' || ch === '\r')) {
+      if (ch === '\r' && next === '\n') i++;
+      row.push(field.trim()); rows.push(row); row = []; field = '';
+    } else if (!inQuotes && ((delim === '\t' && ch === '\t') || (delim !== '\t' && ch === delim))) {
+      row.push(field.trim()); field = '';
+    } else { field += ch; }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field.trim()); rows.push(row); }
+  return rows.map(r => r.map(f => f.replace(/^"|"$/g, '')));
+}
+
 // === UTILITY FUNCTIONS ===
 function showToast(msg, duration = 2000) {
   const t = document.getElementById('toast');
@@ -1149,6 +1187,86 @@ function restoreVault() {
 // === CSV IMPORT (DASHLANE) ===
 function openImportCsvModal() {
   document.getElementById('importCsvModal').classList.add('active');
+  // Reset mapping UI
+  const mapDiv = document.getElementById('csvMapping');
+  if (mapDiv) mapDiv.style.display = 'none';
+  ['mapName','mapUsername','mapPassword','mapUrl','mapNote','mapCategory'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.innerHTML = '';
+  });
+  csvImportState = { content: '', delimiter: ',', rows: [] };
+}
+
+function populateMappingSelect(id, headers, autoIndex, includeNone = false) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  sel.innerHTML = '';
+  // Provide options; use header names if available, else Column N
+  const optAuto = document.createElement('option');
+  optAuto.value = ''; optAuto.textContent = 'Auto'; sel.appendChild(optAuto);
+  if (includeNone) { const optNone = document.createElement('option'); optNone.value = '-1'; optNone.textContent = 'None'; sel.appendChild(optNone); }
+  headers.forEach((h, idx) => {
+    const opt = document.createElement('option');
+    opt.value = String(idx);
+    opt.textContent = h || `Column ${idx + 1}`;
+    if (autoIndex === idx) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function handleCsvFileChange() {
+  const fileInput = document.getElementById('csvFile');
+  if (!fileInput.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const content = e.target.result || '';
+    if (!content.trim()) { showToast('Empty CSV file'); return; }
+    const delim = detectCsvDelimiter(content);
+    let rows = parseCsvText(content, delim).filter(r => r.some(c => (c||'').trim().length > 0));
+    if (rows.length === 0) { showToast('No data found in CSV'); return; }
+    csvImportState = { content, delimiter: delim, rows };
+
+    const headerKeywords = ['password', 'user', 'username', 'url', 'website', 'name', 'title'];
+    const firstRowJoined = (rows[0].join(' ') || '').toLowerCase();
+    const detectedHasHeader = headerKeywords.some(k => firstRowJoined.includes(k));
+    const hasHeader = document.getElementById('skipFirstRow').checked || detectedHasHeader;
+
+    // Build header labels for selects
+    let headers = [];
+    if (hasHeader) {
+      headers = rows[0].map(h => (h || '').trim());
+    } else {
+      const maxCols = Math.max(...rows.slice(0, Math.min(rows.length, 5)).map(r => r.length));
+      headers = Array.from({ length: maxCols }, (_, i) => `Column ${i + 1}`);
+    }
+
+    // Guess indices
+    function guessIndex(names) {
+      if (!hasHeader) return -1;
+      const lower = headers.map(h => h.toLowerCase());
+      for (const n of names) { const idx = lower.indexOf(n); if (idx !== -1) return idx; }
+      return -1;
+    }
+    const autoMap = {
+      name: guessIndex(['name','title','label','site','website'])
+    };
+    const autoUrl = guessIndex(['url','website','site','domain']);
+    const autoUser = guessIndex(['username','user','login','email']);
+    const autoPass = guessIndex(['password','passcode']);
+    const autoNote = guessIndex(['note','notes','comment','comments']);
+    const autoCat  = guessIndex(['category','group','folder']);
+    autoMap.url = autoUrl; autoMap.username = autoUser; autoMap.password = autoPass; autoMap.note = autoNote; autoMap.category = autoCat;
+
+    // Populate selects
+    document.getElementById('csvMapping').style.display = 'block';
+    populateMappingSelect('mapName', headers, autoMap.name, false);
+    populateMappingSelect('mapUsername', headers, autoMap.username, false);
+    populateMappingSelect('mapPassword', headers, autoMap.password, false);
+    populateMappingSelect('mapUrl', headers, autoMap.url, true);
+    populateMappingSelect('mapNote', headers, autoMap.note, true);
+    populateMappingSelect('mapCategory', headers, autoMap.category, true);
+  };
+  reader.onerror = function(){ showToast('Error reading file'); };
+  reader.readAsText(fileInput.files[0]);
 }
 
 function importCsvFile() {
@@ -1168,69 +1286,16 @@ function importCsvFile() {
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
-        const csvContent = e.target.result;
+        const csvContent = csvImportState.content || e.target.result;
 
         if (!csvContent || csvContent.trim().length === 0) {
           showToast('Empty CSV file');
           return;
         }
 
-        // Detect delimiter: comma, semicolon, or tab
-        function detectDelimiter(sample) {
-          const firstChunk = sample.slice(0, 5000);
-          const counts = {
-            ',': (firstChunk.match(/,/g) || []).length,
-            ';': (firstChunk.match(/;/g) || []).length,
-            '\t': (firstChunk.match(/\t/g) || []).length
-          };
-          let best = ','; let max = counts[','];
-          if (counts[';'] > max) { best = ';'; max = counts[';']; }
-          if (counts['\t'] > max) { best = '\t'; max = counts['\t']; }
-          return best === '\t' ? '\t' : best;
-        }
+        const delimiter = csvImportState.content ? csvImportState.delimiter : detectCsvDelimiter(csvContent);
 
-        const delimiter = detectDelimiter(csvContent);
-
-        // Robust CSV parser over full text that respects quotes and embedded newlines
-        function parseCSV(text, delim) {
-          const rows = [];
-          let row = [];
-          let field = '';
-          let inQuotes = false;
-          for (let i = 0; i < text.length; i++) {
-            const ch = text[i];
-            const next = text[i + 1];
-            if (ch === '"') {
-              if (inQuotes && next === '"') { // Escaped quote
-                field += '"';
-                i++;
-              } else {
-                inQuotes = !inQuotes;
-              }
-            } else if (!inQuotes && (ch === '\n' || ch === '\r')) {
-              // End of row (handle CRLF)
-              if (ch === '\r' && next === '\n') i++;
-              row.push(field.trim());
-              rows.push(row);
-              row = [];
-              field = '';
-            } else if (!inQuotes && ((delim === '\t' && ch === '\t') || (delim !== '\t' && ch === delim))) {
-              row.push(field.trim());
-              field = '';
-            } else {
-              field += ch;
-            }
-          }
-          // Push last field/row if any content
-          if (field.length > 0 || row.length > 0) {
-            row.push(field.trim());
-            rows.push(row);
-          }
-          // Remove wrapping quotes from each field
-          return rows.map(r => r.map(f => f.replace(/^"|"$/g, '')));
-        }
-
-        let rows = parseCSV(csvContent, delimiter)
+        let rows = (csvImportState.content ? csvImportState.rows : parseCsvText(csvContent, delimiter))
           .filter(r => r.some(cell => (cell || '').trim().length > 0));
 
         if (rows.length === 0) {
@@ -1244,25 +1309,55 @@ function importCsvFile() {
         const detectedHasHeader = headerKeywords.some(k => firstRowJoined.includes(k));
         const hasHeader = skipFirstRow || detectedHasHeader;
 
-        // Build column index map
-        let colMap = { url: 0, username: 1, password: 2, note: 3, name: 4, category: 5 };
-        if (hasHeader) {
-          const headers = rows[0].map(h => (h || '').toLowerCase().trim());
-          function findIndex(names) {
-            for (const n of names) {
-              const idx = headers.indexOf(n);
-              if (idx !== -1) return idx;
+        // Build column index map, prefer manual mapping if provided
+        let colMap = { url: -1, username: -1, password: -1, note: -1, name: -1, category: -1 };
+        const mapIds = ['mapUrl','mapUsername','mapPassword','mapNote','mapName','mapCategory'];
+        const mapKeys = ['url','username','password','note','name','category'];
+        const mappingAvailable = mapIds.every(id => document.getElementById(id));
+        if (mappingAvailable && document.getElementById('csvMapping').style.display !== 'none') {
+          // Read selected indices (empty string means Auto; -1 means None)
+          mapIds.forEach((id, idx) => {
+            const val = document.getElementById(id).value;
+            const num = val === '' ? NaN : parseInt(val, 10);
+            colMap[mapKeys[idx]] = isNaN(num) ? -2 : num; // -2 = AUTO
+          });
+        }
+        if (Object.values(colMap).every(v => v === -1 || v === -2)) {
+          // No manual mapping; fall back to auto-detection if headers exist
+          if (hasHeader) {
+            const headers = rows[0].map(h => (h || '').toLowerCase().trim());
+            function findIndex(names) {
+              for (const n of names) { const idx = headers.indexOf(n); if (idx !== -1) return idx; }
+              return -1;
             }
-            return -1;
+            colMap = {
+              url: findIndex(['url','website','web address','address','site','domain']),
+              username: findIndex(['username','user','login','email address','email']),
+              password: findIndex(['password','passcode']),
+              note: findIndex(['note','notes','comment','comments']),
+              name: findIndex(['name','title','label','site','website']),
+              category: findIndex(['category','group','folder'])
+            };
+          } else {
+            // No headers; default positions url, username, password, note, name, category
+            colMap = { url: 0, username: 1, password: 2, note: 3, name: 4, category: 5 };
           }
-          colMap = {
-            url: findIndex(['url', 'website', 'web address', 'address', 'site', 'domain']),
-            username: findIndex(['username', 'user', 'login', 'email address', 'email']),
-            password: findIndex(['password', 'passcode']),
-            note: findIndex(['note', 'notes', 'comment', 'comments']),
-            name: findIndex(['name', 'title', 'label']),
-            category: findIndex(['category', 'group', 'folder'])
-          };
+        } else if (Object.values(colMap).some(v => v === -2)) {
+          // Some are Auto: resolve autos via header detection
+          let auto = { url: -1, username: -1, password: -1, note: -1, name: -1, category: -1 };
+          if (hasHeader) {
+            const headers = rows[0].map(h => (h || '').toLowerCase().trim());
+            function findIndex(names) { for (const n of names) { const idx = headers.indexOf(n); if (idx !== -1) return idx; } return -1; }
+            auto = {
+              url: findIndex(['url','website','web address','address','site','domain']),
+              username: findIndex(['username','user','login','email address','email']),
+              password: findIndex(['password','passcode']),
+              note: findIndex(['note','notes','comment','comments']),
+              name: findIndex(['name','title','label','site','website']),
+              category: findIndex(['category','group','folder'])
+            };
+          }
+          for (const k of Object.keys(colMap)) { if (colMap[k] === -2) colMap[k] = auto[k]; }
         }
 
         let startIndex = hasHeader ? 1 : 0;

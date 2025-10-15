@@ -199,12 +199,24 @@
     <button class="close-btn" onclick="closeModal('importCsvModal')" aria-label="Close">✕</button>
     <h3>Import CSV from Dashlane</h3>
     <p style="font-size:14px;margin-bottom:15px;color:#cbd5e1;">Import passwords exported from Dashlane or other password managers</p>
-    <input type="file" id="csvFile" accept=".csv" aria-label="CSV File">
+    <input type="file" id="csvFile" accept=".csv" aria-label="CSV File" onchange="handleCsvFileChange()">
     <div style="margin-top:10px;">
       <label style="display:flex;align-items:center;gap:8px;font-size:14px;">
         <input type="checkbox" id="skipFirstRow" checked>
         Skip first row (header)
       </label>
+    </div>
+    <div id="csvMapping" style="display:none;margin-top:12px;">
+      <h4 style="margin-bottom:8px;">Column Mapping (optional)</h4>
+      <p style="font-size:12px;color:#cbd5e1;margin-bottom:8px;">We tried to auto-detect columns. Adjust if anything looks off.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <label>Site/Name<select id="mapName"></select></label>
+        <label>Username<select id="mapUsername"></select></label>
+        <label>Password<select id="mapPassword"></select></label>
+        <label>URL (optional)<select id="mapUrl"></select></label>
+        <label>Notes (optional)<select id="mapNote"></select></label>
+        <label>Category (optional)<select id="mapCategory"></select></label>
+      </div>
     </div>
     <button class="modal-btn" onclick="importCsvFile()">Import CSV</button>
   </div>
@@ -340,7 +352,7 @@
 <div class="toast" id="toast"></div>
 <button class="open-login-btn" id="openLoginBtn" onclick="openLoginModal()">Open Login</button>
 
-<script src="assets/js/app.js?v=3.0" defer></script>
+<script src="assets/js/app.js?v=3.1" defer></script>
 <script defer>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
