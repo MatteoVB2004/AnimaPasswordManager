@@ -1158,18 +1158,20 @@ function switchTab(tab, btn) {
 // === PARTICLES ===
 function initParticles() {
   const canvas = document.getElementById('particleCanvas');
+  if (!canvas) return;
   const ctx = canvas.getContext('2d');
   
   // Fix for high-DPI screens (prevents stretching on mobile)
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  ctx.scale(dpr, dpr);
   
-  // Use logical dimensions for particle positioning
-  const logicalWidth = rect.width;
-  const logicalHeight = rect.height;
+  // Use window dimensions if canvas hasn't been sized yet
+  const logicalWidth = rect.width || window.innerWidth;
+  const logicalHeight = rect.height || window.innerHeight;
+  
+  canvas.width = logicalWidth * dpr;
+  canvas.height = logicalHeight * dpr;
+  ctx.scale(dpr, dpr);
   
   particleArray = [];
   for (let i = 0; i < 150; i++) {
@@ -1212,14 +1214,6 @@ function toggleParticles() {
 }
 
 window.addEventListener('resize', () => {
-  const c = document.getElementById('particleCanvas');
-  const ctx = c.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const rect = c.getBoundingClientRect();
-  c.width = rect.width * dpr;
-  c.height = rect.height * dpr;
-  ctx.scale(dpr, dpr);
-  
   // Reinitialize particles with new dimensions
   initParticles();
 });
