@@ -509,9 +509,6 @@ function updateUserSelect() {
 }
 
 function createAccountModal() {
-  closeModal('loginModal');
-  closeModal('loginModal');
-  closeModal('loginModal');
 }
 
 function backToLogin() {
