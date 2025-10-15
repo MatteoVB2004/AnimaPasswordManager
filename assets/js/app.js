@@ -2,136 +2,141 @@
 
 // === VARIABLES ===
 let users = JSON.parse(localStorage.getItem('users') || '{}');
-let currentUser = null;
-let passwords = [];
-let editIndex = null;
-let particlesEnabled = true;
-let particleArray = [];
-let deleteCallback = null;
-let deleteAccountUsername = null;
-const defaultProfilePic = 'Images/fe48a763-a358-45a5-81bd-77c0a70330ee.webp';
-let categories = JSON.parse(localStorage.getItem('categories') || '[]');
-let auditLog = JSON.parse(localStorage.getItem('auditLog') || '[]');
-const mfaSecrets = JSON.parse(localStorage.getItem('mfaSecrets') || '{}');
-const shareLinks = JSON.parse(localStorage.getItem('shareLinks') || '{}');
-
-// === CSV IMPORT HELPERS/STATE ===
-let csvImportState = { content: '', delimiter: ',', rows: [] };
-
-function detectCsvDelimiter(sample) {
-  const firstChunk = sample.slice(0, 5000);
-  const counts = {
-    ',': (firstChunk.match(/,/g) || []).length,
-    ';': (firstChunk.match(/;/g) || []).length,
-    '\t': (firstChunk.match(/\t/g) || []).length
+function importCsvFile() {
+  if (!currentUser) {
+    showToast('Please login first');
+    return;
+  }
+  const fileInput = document.getElementById('csvFile');
+  const skipFirstRow = document.getElementById('skipFirstRow').checked;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const csvContent = csvImportState.content || e.target.result;
+      const delimiter = csvImportState.content ? csvImportState.delimiter : detectCsvDelimiter(csvContent);
+      let rows = (csvImportState.content ? csvImportState.rows : parseCsvText(csvContent, delimiter))
+        .filter(r => r.some(cell => (cell || '').trim().length > 0));
+      if (rows.length === 0) {
+        showToast('No data found in CSV');
+        return;
+      }
+      const headerKeywords = ['password', 'user', 'username', 'url', 'website', 'name', 'title'];
+      const firstRowJoined = (rows[0].join(' ') || '').toLowerCase();
+      const detectedHasHeader = headerKeywords.some(k => firstRowJoined.includes(k));
+      const hasHeader = skipFirstRow || detectedHasHeader;
+      // Build column index map, prefer manual mapping if provided
+      let colMap = { url: -1, username: -1, password: -1, note: -1, name: -1, category: -1 };
+      const mapIds = ['mapUrl','mapUsername','mapPassword','mapNote','mapName','mapCategory'];
+      const mapKeys = ['url','username','password','note','name','category'];
+      const mappingAvailable = mapIds.every(id => document.getElementById(id));
+      if (mappingAvailable && document.getElementById('csvMapping').style.display !== 'none') {
+        // Read selected indices (empty string means Auto; -1 means None)
+        mapIds.forEach((id, idx) => {
+          const val = document.getElementById(id).value;
+          const num = val === '' ? NaN : parseInt(val, 10);
+          colMap[mapKeys[idx]] = isNaN(num) ? -2 : num; // -2 = AUTO
+        });
+      }
+      if (Object.values(colMap).every(v => v === -1 || v === -2)) {
+        // No manual mapping; fall back to auto-detection if headers exist
+        if (hasHeader) {
+          const headers = rows[0].map(h => (h || '').toLowerCase().trim());
+          function findIndex(names) {
+            for (const n of names) { const idx = headers.indexOf(n); if (idx !== -1) return idx; }
+            return -1;
+          }
+          colMap = {
+            url: findIndex(['url','website','web address','address','site','domain']),
+            username: findIndex(['username','user','login','email address','email']),
+            password: findIndex(['password','passcode']),
+            note: findIndex(['note','notes','comment','comments']),
+            name: findIndex(['name','title','label','site','website']),
+            category: findIndex(['category','group','folder'])
+          };
+        } else {
+          // No headers; default positions url, username, password, note, name, category
+          colMap = { url: 0, username: 1, password: 2, note: 3, name: 4, category: 5 };
+        }
+      } else if (Object.values(colMap).some(v => v === -2)) {
+        // Some are Auto: resolve autos via header detection
+        let auto = { url: -1, username: -1, password: -1, note: -1, name: -1, category: -1 };
+        if (hasHeader) {
+          const headers = rows[0].map(h => (h || '').toLowerCase().trim());
+          function findIndex(names) { for (const n of names) { const idx = headers.indexOf(n); if (idx !== -1) return idx; } return -1; }
+          auto = {
+            url: findIndex(['url','website','web address','address','site','domain']),
+            username: findIndex(['username','user','login','email address','email']),
+            password: findIndex(['password','passcode']),
+            note: findIndex(['note','notes','comment','comments']),
+            name: findIndex(['name','title','label','site','website']),
+            category: findIndex(['category','group','folder'])
+          };
+        }
+        for (const k of Object.keys(colMap)) { if (colMap[k] === -2) colMap[k] = auto[k]; }
+      }
+      let startIndex = hasHeader ? 1 : 0;
+      let importedCount = 0;
+      let skippedCount = 0;
+      let errorRows = [];
+      for (let i = startIndex; i < rows.length; i++) {
+        try {
+          const r = rows[i];
+          function val(idx) { return (idx !== -1 && idx < r.length) ? (r[idx] || '').trim() : ''; }
+          const url = val(colMap.url);
+          const username = val(colMap.username);
+          const password = val(colMap.password);
+          const note = val(colMap.note);
+          const name = val(colMap.name) || url;
+          const category = val(colMap.category) || 'Imported';
+          // Robust: skip if all fields empty or password missing
+          if ((!url && !name) || !password) { skippedCount++; errorRows.push(i+1); continue; }
+          const entry = {
+            site: name || url || 'Imported Entry',
+            user: username,
+            email: note,
+            category: category,
+            password: password,
+            expiration: 90,
+            createdAt: new Date().toISOString(),
+            added: new Date().toISOString()
+          };
+          passwords.push(entry);
+          importedCount++;
+        } catch (lineError) {
+          errorRows.push(i+1);
+          skippedCount++;
+        }
+      }
+      if (importedCount > 0) {
+        saveVault();
+        renderVault();
+        updatePasswordHealthDashboard();
+        closeModal('importCsvModal');
+        logAudit(`Imported ${importedCount} passwords from CSV`);
+        let msg = `Imported ${importedCount} item(s)`;
+        if (skippedCount) msg += `, skipped ${skippedCount}`;
+        if (errorRows.length) msg += `. Problem rows: ${errorRows.join(', ')}`;
+        showToast(msg);
+      } else {
+        // Surface detected headers to help user diagnose
+        if (hasHeader) {
+          console.warn('CSV headers detected:', rows[0]);
+        }
+        let msg = 'No valid passwords found in CSV.';
+        if (errorRows.length) msg += ` Problem rows: ${errorRows.join(', ')}`;
+        showToast(msg);
+      }
+      // Clear file input
+      fileInput.value = '';
+    } catch (error) {
+      showToast('Error parsing CSV file: ' + (error.message || 'Unknown error'));
+    }
   };
-  let best = ','; let max = counts[','];
-  if (counts[';'] > max) { best = ';'; max = counts[';']; }
-  if (counts['\t'] > max) { best = '\t'; max = counts['\t']; }
-  return best === '\t' ? '\t' : best;
+  reader.onerror = function() {
+    showToast('Error reading file');
+  };
+  reader.readAsText(fileInput.files[0]);
 }
-
-function parseCsvText(text, delim) {
-  const rows = [];
-  let row = [];
-  let field = '';
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const next = text[i + 1];
-    if (ch === '"') {
-      if (inQuotes && next === '"') { field += '"'; i++; }
-      else { inQuotes = !inQuotes; }
-    } else if (!inQuotes && (ch === '\n' || ch === '\r')) {
-      if (ch === '\r' && next === '\n') i++;
-      row.push(field.trim()); rows.push(row); row = []; field = '';
-    } else if (!inQuotes && ((delim === '\t' && ch === '\t') || (delim !== '\t' && ch === delim))) {
-      row.push(field.trim()); field = '';
-    } else { field += ch; }
-  }
-  if (field.length > 0 || row.length > 0) { row.push(field.trim()); rows.push(row); }
-  return rows.map(r => r.map(f => f.replace(/^"|"$/g, '')));
-}
-
-// === UTILITY FUNCTIONS ===
-function showToast(msg, duration = 2000) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), duration);
-}
-
-function closeModal(modalId) {
-  document.getElementById(modalId).classList.remove('active');
-  const modal = document.getElementById(modalId);
-  modal.querySelectorAll('input').forEach(input => input.value = '');
-  modal.querySelectorAll('.error-message').forEach(error => error.style.display = 'none');
-}
-
-function closeLoginModal() {
-  closeModal('loginModal');
-  document.querySelector('.sidebar').style.display = 'none';
-  document.querySelector('.main').style.display = 'none';
-  document.getElementById('openLoginBtn').style.display = 'block';
-  // Hide Android bars when not logged in
-  const tb = document.getElementById('topbar');
-  const bn = document.getElementById('bottomNav');
-  if (tb) tb.style.display = 'none';
-  if (bn) bn.style.display = 'none';
-}
-
-function closeCreateAccountModal() {
-  closeModal('createAccountModal');
-  document.querySelector('.sidebar').style.display = 'none';
-  document.querySelector('.main').style.display = 'none';
-  document.getElementById('openLoginBtn').style.display = 'block';
-  // Hide Android bars when not logged in
-  const tb = document.getElementById('topbar');
-  const bn = document.getElementById('bottomNav');
-  if (tb) tb.style.display = 'none';
-  if (bn) bn.style.display = 'none';
-}
-
-function openLoginModal() {
-  document.getElementById('loginModal').classList.add('active');
-  document.getElementById('openLoginBtn').style.display = 'none';
-  updateUserSelect();
-}
-
-// === ENCRYPTION ===
-function encryptData(data, key) {
-  return CryptoJS.AES.encrypt(JSON.stringify(data), key).toString();
-}
-
-function decryptData(encrypted, key) {
-  try {
-    const bytes = CryptoJS.AES.decrypt(encrypted, key);
-    return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-  } catch (e) {
-    return null;
-  }
-}
-
-// === THEME PERSISTENCE ===
-function toggleTheme() {
-  document.body.classList.toggle('light');
-  localStorage.setItem('theme', document.body.classList.contains('light') ? 'light' : 'dark');
-  logAudit('Theme toggled to ' + (document.body.classList.contains('light') ? 'light' : 'dark'));
-}
-
-window.onload = () => {
-  const theme = localStorage.getItem('theme') || 'dark';
-  if (theme === 'light') document.body.classList.add('light');
-  updateUserSelect();
-  updateCategorySelect();
-  if (Object.keys(users).length === 0) {
-    document.getElementById('createAccountModal').classList.add('active');
-    document.getElementById('openLoginBtn').style.display = 'none';
-  } else {
-    document.getElementById('loginModal').classList.add('active');
-    document.getElementById('openLoginBtn').style.display = 'none';
-  }
-};
 
 // === PASSWORD GENERATOR ===
 function openGeneratePasswordModal() {
