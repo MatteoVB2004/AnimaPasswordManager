@@ -1225,38 +1225,31 @@ function handleCsvFileChange() {
     if (rows.length === 0) { showToast('No data found in CSV'); return; }
     csvImportState = { content, delimiter: delim, rows };
 
-    const headerKeywords = ['password', 'user', 'username', 'url', 'website', 'name', 'title'];
-    const firstRowJoined = (rows[0].join(' ') || '').toLowerCase();
-    const detectedHasHeader = headerKeywords.some(k => firstRowJoined.includes(k));
-    const hasHeader = document.getElementById('skipFirstRow').checked || detectedHasHeader;
-
-    // Build header labels for selects
+    // Always show mapping UI after file selection
     let headers = [];
-    if (hasHeader) {
+    const maxCols = Math.max(...rows.slice(0, Math.min(rows.length, 5)).map(r => r.length));
+    // Use first row as header if skipFirstRow checked, else generic
+    if (document.getElementById('skipFirstRow').checked) {
       headers = rows[0].map(h => (h || '').trim());
     } else {
-      const maxCols = Math.max(...rows.slice(0, Math.min(rows.length, 5)).map(r => r.length));
       headers = Array.from({ length: maxCols }, (_, i) => `Column ${i + 1}`);
     }
 
-    // Guess indices
+    // Guess indices (try to match header names if present)
     function guessIndex(names) {
-      if (!hasHeader) return -1;
       const lower = headers.map(h => h.toLowerCase());
       for (const n of names) { const idx = lower.indexOf(n); if (idx !== -1) return idx; }
       return -1;
     }
     const autoMap = {
-      name: guessIndex(['name','title','label','site','website'])
+      name: guessIndex(['name','title','label','site','website']),
+      url: guessIndex(['url','website','site','domain']),
+      username: guessIndex(['username','user','login','email']),
+      password: guessIndex(['password','passcode']),
+      note: guessIndex(['note','notes','comment','comments']),
+      category: guessIndex(['category','group','folder'])
     };
-    const autoUrl = guessIndex(['url','website','site','domain']);
-    const autoUser = guessIndex(['username','user','login','email']);
-    const autoPass = guessIndex(['password','passcode']);
-    const autoNote = guessIndex(['note','notes','comment','comments']);
-    const autoCat  = guessIndex(['category','group','folder']);
-    autoMap.url = autoUrl; autoMap.username = autoUser; autoMap.password = autoPass; autoMap.note = autoNote; autoMap.category = autoCat;
 
-    // Populate selects
     document.getElementById('csvMapping').style.display = 'block';
     populateMappingSelect('mapName', headers, autoMap.name, false);
     populateMappingSelect('mapUsername', headers, autoMap.username, false);
