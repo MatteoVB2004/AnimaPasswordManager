@@ -145,3 +145,13 @@ body.light .bottom-nav button{color:#1e1e2f;}
 .bottom-nav button span{margin-top:4px;font-weight:600;}
 /* Keep toasts visible above bottom nav on Android */
 body.android .toast{bottom:calc(env(safe-area-inset-bottom,0) + 90px);} 
+.add-tabs{display:flex;gap:10px;margin-bottom:20px;}
+.add-tab-btn{flex:1;padding:12px;background:linear-gradient(135deg,#0a0a0a,#1a1a1a);color:#cbd5e1;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;transition:0.3s;}
+.add-tab-btn.active{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;}
+.add-tab-btn:hover{transform:translateY(-2px);}
+body.light .add-tab-btn{background:linear-gradient(135deg,#d1d5db,#e5e5e5);color:#1e1e2f;}
+body.light .add-tab-btn.active{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;}
+.add-content{display:none;animation:fadeIn 0.3s ease-in;}
+.add-content.active{display:block;}
+.add-content input,.add-content select{margin-top:10px;width:100%;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
