@@ -515,9 +515,23 @@ function createAccountModal() {
 }
 
 function backToLogin() {
-  document.getElementById('createAccountModal').classList.remove('active');
-  document.getElementById('loginModal').classList.add('active');
-  document.getElementById('openLoginBtn').style.display = 'none';
+  const createModal = document.getElementById('createAccountModal');
+  const loginModal = document.getElementById('loginModal');
+  const openBtn = document.getElementById('openLoginBtn');
+  
+  // Clear create account form
+  document.getElementById('createUsername').value = '';
+  document.getElementById('createPassword').value = '';
+  document.getElementById('confirmPassword').value = '';
+  document.getElementById('profilePicture').value = '';
+  
+  // Hide error messages
+  document.querySelectorAll('#createAccountModal .error-message').forEach(err => err.style.display = 'none');
+  
+  // Switch modals
+  createModal.classList.remove('active');
+  loginModal.classList.add('active');
+  openBtn.style.display = 'none';
   updateUserSelect();
 }
 
