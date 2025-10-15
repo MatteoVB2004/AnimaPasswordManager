@@ -967,7 +967,7 @@ function initParticles() {
       r: Math.random() * 2 + 1,
       vx: (Math.random() - 0.5) * 0.7,
       vy: (Math.random() - 0.5) * 0.7,
-      color: `hsl(${Math.random() * 360}, 70%, 60%)`
+      color: `rgba(255, 255, 255, ${Math.random() * 0.5 + 0.3})`
     });
   }
   function animate() {
