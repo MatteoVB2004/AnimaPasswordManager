@@ -78,6 +78,8 @@ body.light .vault-card:hover{box-shadow:0 6px 12px rgba(0,0,0,0.1);}
 .vault-item{display:flex;flex-direction:row;gap:10px;align-items:center;min-width:150px;}
 .vault-item b{font-weight:600;min-width:80px;}
 .vault-item .password-field{display:flex;align-items:center;gap:5px;}
+.site-icon{width:20px;height:20px;border-radius:4px;object-fit:contain;margin-right:8px;vertical-align:middle;font-size:18px;}
+.site-icon-fallback{width:20px;height:20px;margin-right:8px;vertical-align:middle;font-size:18px;}
 .vault-item input[readonly]{background:none;border:none;color:inherit;cursor:pointer;flex:1;}
 .vault-item .actions{display:flex;gap:5px;justify-content:flex-start;align-items:center;}
 .vault-item button.btn-copy, .vault-item button.btn-edit, .vault-item button.btn-delete, .vault-item button.autofill-btn, .vault-item button.share-btn{width:32px;height:32px;border-radius:8px;font-size:16px;display:flex;align-items:center;justify-content:center;transition:transform 0.2s, box-shadow 0.2s;}

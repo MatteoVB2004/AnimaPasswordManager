@@ -255,6 +255,35 @@ function getDaysLeft(p) {
   return parseInt(p.expiration) - diffDays;
 }
 
+// Get favicon URL for a website
+function getFaviconUrl(site) {
+  // Remove "WiFi: " prefix if present
+  if (site.startsWith('WiFi: ')) {
+    return '📶'; // Return WiFi emoji for WiFi entries
+  }
+  
+  try {
+    // Extract domain from site name
+    let domain = site.toLowerCase().trim();
+    
+    // Remove common protocols
+    domain = domain.replace(/^(https?:\/\/)?(www\.)?/, '');
+    
+    // Remove paths and query strings
+    domain = domain.split('/')[0].split('?')[0];
+    
+    // If it's not a valid domain format, return default
+    if (!domain || !domain.includes('.')) {
+      return '🌐'; // Default globe emoji
+    }
+    
+    // Use Google's favicon service (works for most sites)
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+  } catch (e) {
+    return '🌐'; // Fallback to globe emoji
+  }
+}
+
 // === VAULT ===
 function saveVault() {
   if (currentUser) {
@@ -318,8 +347,14 @@ function renderVault(filteredPasswords = passwords) {
         logAudit(`Reordered password for ${tmp.site}`);
       }
     };
+    const faviconUrl = getFaviconUrl(p.site);
+    const isEmoji = faviconUrl.length <= 2; // Check if it's an emoji (WiFi or globe)
+    const faviconHtml = isEmoji 
+      ? `<span class="site-icon">${faviconUrl}</span>` 
+      : `<img class="site-icon" src="${faviconUrl}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';" /><span class="site-icon-fallback" style="display:none;">🌐</span>`;
+    
     card.innerHTML = `
-      <div class="vault-item"><b>Site:</b> <span>${p.site}</span></div>
+      <div class="vault-item"><b>Site:</b> ${faviconHtml}<span>${p.site}</span></div>
       <div class="vault-item"><b>Username:</b> <span>${p.user}</span></div>
       <div class="vault-item"><b>Email:</b> <span>${p.email || ''}</span></div>
       <div class="vault-item"><b>Password:</b>
