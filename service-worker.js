@@ -1,4 +1,4 @@
-const CACHE_NAME = 'anima-cache-v2';
+const CACHE_NAME = 'anima-cache-v3';
 // Resolve asset URLs relative to the SW location to support subpath hosting
 const base = new URL('./', self.location);
 const url = (p) => new URL(p, base).toString();
