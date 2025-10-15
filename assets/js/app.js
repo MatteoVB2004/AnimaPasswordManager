@@ -539,6 +539,16 @@ function toggleLoginPassword() {
   inp.type = inp.type === 'password' ? 'text' : 'password';
 }
 
+function toggleCreatePassword() {
+  const inp = document.getElementById('createPassword');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function toggleConfirmPassword() {
+  const inp = document.getElementById('confirmPassword');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
 async function checkLogin() {
   const username = document.getElementById('loginUsername').value;
   const pw = document.getElementById('loginPassword').value;
