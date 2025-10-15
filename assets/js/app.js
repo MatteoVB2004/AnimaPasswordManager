@@ -1043,6 +1043,125 @@ function restoreVault() {
   reader.readAsText(fileInput.files[0]);
 }
 
+// === CSV IMPORT (DASHLANE) ===
+function openImportCsvModal() {
+  document.getElementById('importCsvModal').classList.add('active');
+}
+
+function importCsvFile() {
+  if (!currentUser) {
+    showToast('Please login first');
+    return;
+  }
+  
+  const fileInput = document.getElementById('csvFile');
+  const skipFirstRow = document.getElementById('skipFirstRow').checked;
+  
+  if (!fileInput.files[0]) {
+    showToast('No file selected');
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const csvContent = e.target.result;
+      const lines = csvContent.split(/\r?\n/).filter(line => line.trim());
+      
+      if (lines.length === 0) {
+        showToast('Empty CSV file');
+        return;
+      }
+      
+      let startIndex = skipFirstRow ? 1 : 0;
+      let importedCount = 0;
+      let skippedCount = 0;
+      
+      // Parse CSV (handles quoted fields with commas)
+      function parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      }
+      
+      for (let i = startIndex; i < lines.length; i++) {
+        const fields = parseCSVLine(lines[i]);
+        
+        // Dashlane CSV format: url, username, password, note, name, category
+        // Also support common formats: website, username, password, etc.
+        if (fields.length < 2) {
+          skippedCount++;
+          continue;
+        }
+        
+        // Extract fields (flexible to handle different CSV formats)
+        const url = fields[0] || '';
+        const username = fields[1] || '';
+        const password = fields[2] || '';
+        const note = fields[3] || '';
+        const name = fields[4] || url;
+        const category = fields[5] || 'Imported';
+        
+        // Skip empty entries
+        if (!url && !name) {
+          skippedCount++;
+          continue;
+        }
+        
+        // Create password entry
+        const entry = {
+          site: name || url || 'Imported Entry',
+          user: username,
+          email: note,
+          category: category,
+          password: password,
+          expiration: 90,
+          createdAt: new Date().toISOString(),
+          added: new Date().toISOString()
+        };
+        
+        passwords.push(entry);
+        importedCount++;
+      }
+      
+      if (importedCount > 0) {
+        saveVault();
+        renderVault();
+        updatePasswordHealthDashboard();
+        closeModal('importCsvModal');
+        logAudit(`Imported ${importedCount} passwords from CSV`);
+        showToast(`Successfully imported ${importedCount} password(s)${skippedCount > 0 ? `, skipped ${skippedCount}` : ''}`);
+      } else {
+        showToast('No valid passwords found in CSV');
+      }
+      
+      // Clear file input
+      fileInput.value = '';
+      
+    } catch (error) {
+      console.error('CSV import error:', error);
+      showToast('Error parsing CSV file');
+    }
+  };
+  
+  reader.readAsText(fileInput.files[0]);
+}
+
 // === AUTO-FILL ===
 function autofillPassword(site, username, password) {
   showToast(`Auto-filling for ${site}: Username: ${username}, Password: ${password}`);

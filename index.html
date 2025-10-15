@@ -186,6 +186,22 @@
   </div>
 </div>
 
+<div id="importCsvModal" class="modal">
+  <div class="modal-content">
+    <button class="close-btn" onclick="closeModal('importCsvModal')" aria-label="Close">✕</button>
+    <h3>Import CSV from Dashlane</h3>
+    <p style="font-size:14px;margin-bottom:15px;color:#cbd5e1;">Import passwords exported from Dashlane or other password managers</p>
+    <input type="file" id="csvFile" accept=".csv" aria-label="CSV File">
+    <div style="margin-top:10px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;">
+        <input type="checkbox" id="skipFirstRow" checked>
+        Skip first row (header)
+      </label>
+    </div>
+    <button class="modal-btn" onclick="importCsvFile()">Import CSV</button>
+  </div>
+</div>
+
 <!-- Sidebar -->
 <div class="sidebar" style="display:none;">
   <div class="profile-container">
@@ -287,6 +303,7 @@
     <button class="modal-btn" onclick="toggleParticles()">Toggle Particles</button>
     <button class="modal-btn" onclick="openBackupModal()">Backup Vault</button>
     <button class="modal-btn" onclick="openRestoreModal()">Restore Vault</button>
+    <button class="modal-btn" onclick="openImportCsvModal()">Import CSV (Dashlane)</button>
     <button class="modal-btn" onclick="resetMasterPasswordModal()">Reset Master Password</button>
     <button class="modal-btn" onclick="confirmDeleteAllPasswords()">Delete All Passwords</button>
     <div id="categoryManager">
