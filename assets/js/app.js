@@ -1362,6 +1362,10 @@ function initParticles() {
   canvas.height = logicalHeight * dpr;
   ctx.scale(dpr, dpr);
   
+  // Detect if mobile for slower particle speed
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const speedMultiplier = isMobile ? 0.3 : 0.7; // Much slower on mobile
+  
   particleArray = [];
   for (let i = 0; i < 150; i++) {
     const opacity = Math.random() * 0.5 + 0.3;
@@ -1369,8 +1373,8 @@ function initParticles() {
       x: Math.random() * logicalWidth,
       y: Math.random() * logicalHeight,
       r: Math.random() * 2 + 1,
-      vx: (Math.random() - 0.5) * 0.7,
-      vy: (Math.random() - 0.5) * 0.7,
+      vx: (Math.random() - 0.5) * speedMultiplier,
+      vy: (Math.random() - 0.5) * speedMultiplier,
       opacity: opacity
     });
   }
