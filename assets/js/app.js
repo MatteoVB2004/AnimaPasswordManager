@@ -509,15 +509,30 @@ function updateUserSelect() {
 }
 
 function createAccountModal() {
-  document.getElementById('loginModal').classList.remove('active');
-  document.getElementById('createAccountModal').classList.add('active');
-  document.getElementById('openLoginBtn').style.display = 'none';
+  console.log('createAccountModal called');
+  const loginModal = document.getElementById('loginModal');
+  const createModal = document.getElementById('createAccountModal');
+  const openBtn = document.getElementById('openLoginBtn');
+  
+  console.log('Login modal before:', loginModal.classList.contains('active'));
+  console.log('Create modal before:', createModal.classList.contains('active'));
+  
+  loginModal.classList.remove('active');
+  createModal.classList.add('active');
+  openBtn.style.display = 'none';
+  
+  console.log('Login modal after:', loginModal.classList.contains('active'));
+  console.log('Create modal after:', createModal.classList.contains('active'));
 }
 
 function backToLogin() {
+  console.log('backToLogin called');
   const createModal = document.getElementById('createAccountModal');
   const loginModal = document.getElementById('loginModal');
   const openBtn = document.getElementById('openLoginBtn');
+  
+  console.log('Create modal before:', createModal.classList.contains('active'));
+  console.log('Login modal before:', loginModal.classList.contains('active'));
   
   // Clear create account form
   document.getElementById('createUsername').value = '';
@@ -533,6 +548,9 @@ function backToLogin() {
   loginModal.classList.add('active');
   openBtn.style.display = 'none';
   updateUserSelect();
+  
+  console.log('Create modal after:', createModal.classList.contains('active'));
+  console.log('Login modal after:', loginModal.classList.contains('active'));
 }
 
 function createAccount() {
