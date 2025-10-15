@@ -217,19 +217,44 @@
 
   <div id="add" class="tab">
     <h2>Add Password</h2>
-    <input type="text" id="siteAdd" placeholder="Site/App" required aria-label="Site or App">
-    <input type="text" id="usernameAdd" placeholder="Username" required aria-label="Username">
-    <input type="email" id="emailAdd" placeholder="Email" aria-label="Email">
-    <select id="categoryAdd" aria-label="Category">
-      <option value="" disabled selected>Select Category</option>
-    </select>
-    <div class="password-container">
-      <input type="text" id="passwordAdd" placeholder="Password" required oninput="updateStrengthAdd()" aria-label="Password">
-      <button class="generate-pass-btn" onclick="openGeneratePasswordModal()" aria-label="Generate Password">🔄</button>
+    <div class="add-tabs">
+      <button class="add-tab-btn active" onclick="switchAddTab('regular')">Regular Password</button>
+      <button class="add-tab-btn" onclick="switchAddTab('wifi')">WiFi Password</button>
     </div>
-    <div class="strength"><div id="strengthBarAdd" class="strength-bar"></div></div>
-    <input type="number" id="expirationAdd" placeholder="Expiration Days" value="90" min="1" aria-label="Expiration Days">
-    <button class="modal-btn" onclick="savePasswordAdd()">Add Password</button>
+    
+    <div id="addRegular" class="add-content active">
+      <input type="text" id="siteAdd" placeholder="Site/App" required aria-label="Site or App">
+      <input type="text" id="usernameAdd" placeholder="Username" required aria-label="Username">
+      <input type="email" id="emailAdd" placeholder="Email" aria-label="Email">
+      <select id="categoryAdd" aria-label="Category">
+        <option value="" disabled selected>Select Category</option>
+      </select>
+      <div class="password-container">
+        <input type="text" id="passwordAdd" placeholder="Password" required oninput="updateStrengthAdd()" aria-label="Password">
+        <button class="generate-pass-btn" onclick="openGeneratePasswordModal()" aria-label="Generate Password">🔄</button>
+      </div>
+      <div class="strength"><div id="strengthBarAdd" class="strength-bar"></div></div>
+      <input type="number" id="expirationAdd" placeholder="Expiration Days" value="90" min="1" aria-label="Expiration Days">
+      <button class="modal-btn" onclick="savePasswordAdd()">Add Password</button>
+    </div>
+    
+    <div id="addWifi" class="add-content">
+      <input type="text" id="wifiSsid" placeholder="WiFi Network Name (SSID)" required aria-label="WiFi SSID">
+      <select id="wifiSecurity" aria-label="Security Type">
+        <option value="WPA2">WPA2</option>
+        <option value="WPA3">WPA3</option>
+        <option value="WPA">WPA</option>
+        <option value="WEP">WEP</option>
+        <option value="Open">Open (No Password)</option>
+      </select>
+      <div class="password-container">
+        <input type="text" id="wifiPassword" placeholder="WiFi Password" required oninput="updateStrengthWifi()" aria-label="WiFi Password">
+        <button class="generate-pass-btn" onclick="openGeneratePasswordModal()" aria-label="Generate Password">🔄</button>
+      </div>
+      <div class="strength"><div id="strengthBarWifi" class="strength-bar"></div></div>
+      <input type="text" id="wifiNotes" placeholder="Notes (e.g., location, router info)" aria-label="WiFi Notes">
+      <button class="modal-btn" onclick="saveWifiPassword()">Add WiFi Password</button>
+    </div>
   </div>
 
   <div id="dashboard" class="tab">

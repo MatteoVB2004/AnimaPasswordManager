@@ -443,6 +443,80 @@ function savePasswordAdd() {
   document.getElementById('expirationAdd').value = 90;
 }
 
+// === WIFI PASSWORD TAB ===
+function switchAddTab(type) {
+  const regularTab = document.getElementById('addRegular');
+  const wifiTab = document.getElementById('addWifi');
+  const buttons = document.querySelectorAll('.add-tab-btn');
+  
+  buttons.forEach(btn => btn.classList.remove('active'));
+  
+  if (type === 'regular') {
+    regularTab.classList.add('active');
+    wifiTab.classList.remove('active');
+    buttons[0].classList.add('active');
+  } else {
+    regularTab.classList.remove('active');
+    wifiTab.classList.add('active');
+    buttons[1].classList.add('active');
+  }
+}
+
+function updateStrengthWifi() {
+  const pwd = document.getElementById('wifiPassword').value;
+  const bar = document.getElementById('strengthBarWifi');
+  const score = strengthScore(pwd);
+  bar.style.width = (score * 25) + '%';
+  bar.style.background = strengthColor(score);
+}
+
+function saveWifiPassword() {
+  if (!currentUser) {
+    showToast('Please login first');
+    return;
+  }
+  
+  const ssid = document.getElementById('wifiSsid').value.trim();
+  const security = document.getElementById('wifiSecurity').value;
+  const password = document.getElementById('wifiPassword').value;
+  const notes = document.getElementById('wifiNotes').value.trim();
+  
+  if (!ssid || !password) {
+    showToast('Please fill in WiFi name and password');
+    return;
+  }
+  
+  const wifiEntry = {
+    site: `WiFi: ${ssid}`,
+    user: security,
+    email: notes,
+    category: 'WiFi',
+    password: password,
+    expiration: null,
+    createdAt: new Date().toISOString(),
+    type: 'wifi'
+  };
+  
+  passwords.push(wifiEntry);
+  saveVault();
+  renderVault();
+  
+  // Clear form
+  document.getElementById('wifiSsid').value = '';
+  document.getElementById('wifiPassword').value = '';
+  document.getElementById('wifiNotes').value = '';
+  document.getElementById('wifiSecurity').value = 'WPA2';
+  document.getElementById('strengthBarWifi').style.width = '0%';
+  
+  showToast('WiFi password added!');
+  logAudit(`Added WiFi: ${ssid}`);
+  
+  // Update dashboard if active
+  if (document.getElementById('dashboard').classList.contains('active')) {
+    updatePasswordHealthDashboard();
+  }
+}
+
 // === DELETE CONFIRMATIONS ===
 function confirmDeletePassword(i) {
   deleteCallback = () => {
