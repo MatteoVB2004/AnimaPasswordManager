@@ -1015,14 +1015,14 @@ function switchTab(tab, btn) {
 }
 
 // === PARTICLES ===
-function initParticles(canvas) {
-  if (!canvas) return;
+function initParticles() {
+  const canvas = document.getElementById('particleCanvas');
   const ctx = canvas.getContext('2d');
-  canvas.width = canvas.offsetWidth;
-  canvas.height = canvas.offsetHeight;
-  let arr = [];
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  particleArray = [];
   for (let i = 0; i < 150; i++) {
-    arr.push({
+    particleArray.push({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
       r: Math.random() * 2 + 1,
@@ -1031,11 +1031,10 @@ function initParticles(canvas) {
       color: `rgba(255, 255, 255, ${Math.random() * 0.5 + 0.3})`
     });
   }
-  let running = true;
   function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (particlesEnabled && running) {
-      arr.forEach(p => {
+    if (particlesEnabled) {
+      particleArray.forEach(p => {
         p.x += p.vx; p.y += p.vy;
         if (p.x > canvas.width) p.x = 0; if (p.x < 0) p.x = canvas.width;
         if (p.y > canvas.height) p.y = 0; if (p.y < 0) p.y = canvas.height;
@@ -1043,30 +1042,19 @@ function initParticles(canvas) {
         ctx.fillStyle = p.color; ctx.fill();
       });
     }
-    if (running) requestAnimationFrame(animate);
+    requestAnimationFrame(animate);
   }
   animate();
-  return () => { running = false; };
 }
 
-// Main background particles
-let stopMainParticles = null;
 window.addEventListener('DOMContentLoaded', () => {
-  const mainCanvas = document.getElementById('particleCanvas');
-  if (mainCanvas) stopMainParticles = initParticles(mainCanvas);
+  initParticles();
 });
-
-// Modal particles
-let stopLoginParticles = null;
-let stopCreateParticles = null;
 
 function openLoginModal() {
   document.getElementById('loginModal').classList.add('active');
   document.getElementById('openLoginBtn').style.display = 'none';
   updateUserSelect();
-  // Start particles for login modal
-  const canvas = document.getElementById('loginParticles');
-  if (canvas) stopLoginParticles = initParticles(canvas);
 }
 
 function closeLoginModal() {
@@ -1079,8 +1067,6 @@ function closeLoginModal() {
   const bn = document.getElementById('bottomNav');
   if (tb) tb.style.display = 'none';
   if (bn) bn.style.display = 'none';
-  // Stop particles for login modal
-  if (stopLoginParticles) stopLoginParticles();
 }
 
 function closeCreateAccountModal() {
@@ -1093,16 +1079,11 @@ function closeCreateAccountModal() {
   const bn = document.getElementById('bottomNav');
   if (tb) tb.style.display = 'none';
   if (bn) bn.style.display = 'none';
-  // Stop particles for create account modal
-  if (stopCreateParticles) stopCreateParticles();
 }
 
 function createAccountModal() {
   document.getElementById('createAccountModal').classList.add('active');
   document.getElementById('openLoginBtn').style.display = 'none';
-  // Start particles for create account modal
-  const canvas = document.getElementById('createParticles');
-  if (canvas) stopCreateParticles = initParticles(canvas);
 }
 
 function toggleParticles() {
