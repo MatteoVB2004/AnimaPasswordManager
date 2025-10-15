@@ -28,16 +28,21 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   const req = event.request;
-  // Network-first for HTML, cache-first for others
-  if (req.headers.get('accept')?.includes('text/html')) {
+  const reqUrl = new URL(req.url);
+  
+  // Network-first for HTML, JS, and CSS to ensure updates
+  if (req.headers.get('accept')?.includes('text/html') || 
+      reqUrl.pathname.endsWith('.js') || 
+      reqUrl.pathname.endsWith('.css')) {
     event.respondWith(
       fetch(req).then(res => {
         const resClone = res.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(req, resClone));
         return res;
-  }).catch(() => caches.match(req).then(r => r || caches.match(url('./index.html'))))
+      }).catch(() => caches.match(req).then(r => r || caches.match(url('./index.html'))))
     );
   } else {
+    // Cache-first for images and other assets
     event.respondWith(
       caches.match(req).then(cached => cached || fetch(req).then(res => {
         const resClone = res.clone();
