@@ -598,24 +598,94 @@ document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
 
 // === ACCOUNT MANAGEMENT ===
 function updateUserSelect() {
-  const loginSelect = document.getElementById('loginUsername');
+  const loginDropdown = document.getElementById('loginUsernameDropdown');
   const deleteSelect = document.getElementById('accountDeleteSelect');
-  loginSelect.innerHTML = '<option value="" disabled selected>Select Username</option>';
+  const hiddenInput = document.getElementById('loginUsername');
+  
+  loginDropdown.innerHTML = '';
   deleteSelect.innerHTML = '<option value="" disabled selected>Select Account</option>';
+  
   const lastUser = localStorage.getItem('lastUser');
+  
   Object.keys(users).forEach(username => {
-    const loginOption = document.createElement('option');
-    loginOption.value = username;
-    loginOption.textContent = username;
-    if (username === lastUser) loginOption.selected = true;
-    loginSelect.appendChild(loginOption);
+    // Create custom dropdown option with avatar
+    const option = document.createElement('div');
+    option.className = 'custom-select-option';
+    option.onclick = () => selectUser(username);
+    
+    const avatar = document.createElement('img');
+    avatar.className = 'user-avatar';
+    avatar.src = users[username].profilePicture || 'Images/fe48a763-a358-45a5-81bd-77c0a70330ee.webp';
+    avatar.alt = username;
+    avatar.onerror = () => { avatar.src = 'Images/fe48a763-a358-45a5-81bd-77c0a70330ee.webp'; };
+    
+    const name = document.createElement('span');
+    name.className = 'user-name';
+    name.textContent = username;
+    
+    option.appendChild(avatar);
+    option.appendChild(name);
+    loginDropdown.appendChild(option);
+    
+    // Set default selection
+    if (username === lastUser) {
+      selectUser(username, false);
+    }
+    
+    // Delete select (keep as regular select)
     const deleteOption = document.createElement('option');
     deleteOption.value = username;
     deleteOption.textContent = username;
     deleteSelect.appendChild(deleteOption);
   });
+  
   document.getElementById('mfaCode').style.display = users[lastUser]?.mfaEnabled ? 'block' : 'none';
 }
+
+function toggleUserDropdown() {
+  const dropdown = document.getElementById('loginUsernameDropdown');
+  const select = document.getElementById('loginUsernameSelect');
+  dropdown.classList.toggle('open');
+  select.classList.toggle('open');
+}
+
+function selectUser(username, closeDropdown = true) {
+  const hiddenInput = document.getElementById('loginUsername');
+  const display = document.getElementById('selectedUserDisplay');
+  
+  hiddenInput.value = username;
+  
+  // Update display
+  const avatar = document.createElement('img');
+  avatar.className = 'user-avatar';
+  avatar.src = users[username].profilePicture || 'Images/fe48a763-a358-45a5-81bd-77c0a70330ee.webp';
+  avatar.alt = username;
+  avatar.onerror = () => { avatar.src = 'Images/fe48a763-a358-45a5-81bd-77c0a70330ee.webp'; };
+  
+  const name = document.createElement('span');
+  name.textContent = username;
+  
+  display.innerHTML = '';
+  display.appendChild(avatar);
+  display.appendChild(name);
+  
+  // Update MFA field visibility
+  document.getElementById('mfaCode').style.display = users[username]?.mfaEnabled ? 'block' : 'none';
+  
+  if (closeDropdown) {
+    toggleUserDropdown();
+  }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  const dropdown = document.getElementById('loginUsernameDropdown');
+  const select = document.getElementById('loginUsernameSelect');
+  if (dropdown && select && !select.contains(e.target) && !dropdown.contains(e.target)) {
+    dropdown.classList.remove('open');
+    select.classList.remove('open');
+  }
+});
 
 function createAccountModal() {
   console.log('createAccountModal called');

@@ -52,9 +52,16 @@
     <img class="logo" src="Images/logo-circular.png" alt="Anima Logo">
     <h1>Anima</h1>
     <h3>Login</h3>
-    <select id="loginUsername" aria-label="Select Username" required>
-      <option value="" disabled selected>Select Username</option>
-    </select>
+    <div class="custom-select-wrapper">
+      <div class="custom-select" id="loginUsernameSelect" onclick="toggleUserDropdown()">
+        <span class="selected-user" id="selectedUserDisplay">
+          <span class="placeholder">Select Username</span>
+        </span>
+        <span class="dropdown-arrow">▼</span>
+      </div>
+      <div class="custom-select-dropdown" id="loginUsernameDropdown"></div>
+    </div>
+    <input type="hidden" id="loginUsername" required>
     <div class="password-container">
       <input type="password" id="loginPassword" placeholder="Enter Master Password" required aria-label="Master Password">
       <button class="show-pass-btn" onclick="toggleLoginPassword()" aria-label="Toggle Password Visibility">👁️</button>
