@@ -1175,24 +1175,33 @@ function initParticles() {
   
   particleArray = [];
   for (let i = 0; i < 150; i++) {
+    const opacity = Math.random() * 0.5 + 0.3;
     particleArray.push({
       x: Math.random() * logicalWidth,
       y: Math.random() * logicalHeight,
       r: Math.random() * 2 + 1,
       vx: (Math.random() - 0.5) * 0.7,
       vy: (Math.random() - 0.5) * 0.7,
-      color: `rgba(255, 255, 255, ${Math.random() * 0.5 + 0.3})`
+      opacity: opacity
     });
   }
   function animate() {
     ctx.clearRect(0, 0, logicalWidth, logicalHeight);
     if (particlesEnabled) {
+      // Detect current theme
+      const isLightTheme = document.body.classList.contains('light');
+      
       particleArray.forEach(p => {
         p.x += p.vx; p.y += p.vy;
         if (p.x > logicalWidth) p.x = 0; if (p.x < 0) p.x = logicalWidth;
         if (p.y > logicalHeight) p.y = 0; if (p.y < 0) p.y = logicalHeight;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = p.color; ctx.fill();
+        
+        // Use black particles for light theme, white for dark theme
+        ctx.fillStyle = isLightTheme 
+          ? `rgba(0, 0, 0, ${p.opacity})` 
+          : `rgba(255, 255, 255, ${p.opacity})`;
+        ctx.fill();
       });
     }
     requestAnimationFrame(animate);
