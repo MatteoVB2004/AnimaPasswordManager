@@ -1169,122 +1169,167 @@ function importCsvFile() {
   reader.onload = function(e) {
     try {
         const csvContent = e.target.result;
-      
+
         if (!csvContent || csvContent.trim().length === 0) {
           showToast('Empty CSV file');
           return;
         }
-      
-        const lines = csvContent.split(/\r?\n/).filter(line => line.trim());
-      
-        if (lines.length === 0) {
-          showToast('No data found in CSV');
-        return;
-      }
-      
-      let startIndex = skipFirstRow ? 1 : 0;
-      let importedCount = 0;
-      let skippedCount = 0;
-      
-        // Parse CSV (handles quoted fields with commas and escaped quotes)
-      function parseCSVLine(line) {
-        const result = [];
-        let current = '';
-        let inQuotes = false;
-        
-        for (let i = 0; i < line.length; i++) {
-          const char = line[i];
-            const nextChar = line[i + 1];
-          
-          if (char === '"') {
-              // Handle escaped quotes ("")
-              if (inQuotes && nextChar === '"') {
-                current += '"';
-                i++; // Skip next quote
+
+        // Detect delimiter: comma, semicolon, or tab
+        function detectDelimiter(sample) {
+          const firstChunk = sample.slice(0, 5000);
+          const counts = {
+            ',': (firstChunk.match(/,/g) || []).length,
+            ';': (firstChunk.match(/;/g) || []).length,
+            '\t': (firstChunk.match(/\t/g) || []).length
+          };
+          let best = ','; let max = counts[','];
+          if (counts[';'] > max) { best = ';'; max = counts[';']; }
+          if (counts['\t'] > max) { best = '\t'; max = counts['\t']; }
+          return best === '\t' ? '\t' : best;
+        }
+
+        const delimiter = detectDelimiter(csvContent);
+
+        // Robust CSV parser over full text that respects quotes and embedded newlines
+        function parseCSV(text, delim) {
+          const rows = [];
+          let row = [];
+          let field = '';
+          let inQuotes = false;
+          for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            const next = text[i + 1];
+            if (ch === '"') {
+              if (inQuotes && next === '"') { // Escaped quote
+                field += '"';
+                i++;
               } else {
                 inQuotes = !inQuotes;
               }
-          } else if (char === ',' && !inQuotes) {
-              result.push(current.trim().replace(/^"|"$/g, '')); // Remove surrounding quotes
-            current = '';
-          } else {
-            current += char;
+            } else if (!inQuotes && (ch === '\n' || ch === '\r')) {
+              // End of row (handle CRLF)
+              if (ch === '\r' && next === '\n') i++;
+              row.push(field.trim());
+              rows.push(row);
+              row = [];
+              field = '';
+            } else if (!inQuotes && ((delim === '\t' && ch === '\t') || (delim !== '\t' && ch === delim))) {
+              row.push(field.trim());
+              field = '';
+            } else {
+              field += ch;
+            }
           }
+          // Push last field/row if any content
+          if (field.length > 0 || row.length > 0) {
+            row.push(field.trim());
+            rows.push(row);
+          }
+          // Remove wrapping quotes from each field
+          return rows.map(r => r.map(f => f.replace(/^"|"$/g, '')));
         }
-          result.push(current.trim().replace(/^"|"$/g, ''));
-        return result;
-      }
-      
-      for (let i = startIndex; i < lines.length; i++) {
+
+        let rows = parseCSV(csvContent, delimiter)
+          .filter(r => r.some(cell => (cell || '').trim().length > 0));
+
+        if (rows.length === 0) {
+          showToast('No data found in CSV');
+          return;
+        }
+
+        // Header detection: use explicit checkbox OR detect via keywords
+        const headerKeywords = ['password', 'user', 'username', 'url', 'website', 'name', 'title'];
+        const firstRowJoined = (rows[0].join(' ') || '').toLowerCase();
+        const detectedHasHeader = headerKeywords.some(k => firstRowJoined.includes(k));
+        const hasHeader = skipFirstRow || detectedHasHeader;
+
+        // Build column index map
+        let colMap = { url: 0, username: 1, password: 2, note: 3, name: 4, category: 5 };
+        if (hasHeader) {
+          const headers = rows[0].map(h => (h || '').toLowerCase().trim());
+          function findIndex(names) {
+            for (const n of names) {
+              const idx = headers.indexOf(n);
+              if (idx !== -1) return idx;
+            }
+            return -1;
+          }
+          colMap = {
+            url: findIndex(['url', 'website', 'web address', 'address', 'site', 'domain']),
+            username: findIndex(['username', 'user', 'login', 'email address', 'email']),
+            password: findIndex(['password', 'passcode']),
+            note: findIndex(['note', 'notes', 'comment', 'comments']),
+            name: findIndex(['name', 'title', 'label']),
+            category: findIndex(['category', 'group', 'folder'])
+          };
+        }
+
+        let startIndex = hasHeader ? 1 : 0;
+        let importedCount = 0;
+        let skippedCount = 0;
+
+        for (let i = startIndex; i < rows.length; i++) {
           try {
-        const fields = parseCSVLine(lines[i]);
-        
-        // Dashlane CSV format: url, username, password, note, name, category
-        // Also support common formats: website, username, password, etc.
-        if (fields.length < 2) {
-          skippedCount++;
-          continue;
-        }
-        
-        // Extract fields (flexible to handle different CSV formats)
-        const url = fields[0] || '';
-        const username = fields[1] || '';
-        const password = fields[2] || '';
-        const note = fields[3] || '';
-        const name = fields[4] || url;
-        const category = fields[5] || 'Imported';
-        
-        // Skip empty entries
-          if ((!url && !name) || !password) {
-          skippedCount++;
-          continue;
-        }
-        
-        // Create password entry
-        const entry = {
-          site: name || url || 'Imported Entry',
-          user: username,
-          email: note,
-          category: category,
-          password: password,
-          expiration: 90,
-          createdAt: new Date().toISOString(),
-          added: new Date().toISOString()
-        };
-        
-        passwords.push(entry);
-        importedCount++;
+            const r = rows[i];
+            function val(idx) { return (idx !== -1 && idx < r.length) ? (r[idx] || '').trim() : ''; }
+
+            const url = val(colMap.url);
+            const username = val(colMap.username);
+            const password = val(colMap.password);
+            const note = val(colMap.note);
+            const name = val(colMap.name) || url;
+            const category = val(colMap.category) || 'Imported';
+
+            if ((!url && !name) || !password) { skippedCount++; continue; }
+
+            const entry = {
+              site: name || url || 'Imported Entry',
+              user: username,
+              email: note,
+              category: category,
+              password: password,
+              expiration: 90,
+              createdAt: new Date().toISOString(),
+              added: new Date().toISOString()
+            };
+            passwords.push(entry);
+            importedCount++;
           } catch (lineError) {
-            console.error('Error parsing line:', lines[i], lineError);
+            console.error('Error parsing CSV row', i + 1, lineError);
             skippedCount++;
           }
-      }
-      
-      if (importedCount > 0) {
-        saveVault();
-        renderVault();
-        updatePasswordHealthDashboard();
-        closeModal('importCsvModal');
-        logAudit(`Imported ${importedCount} passwords from CSV`);
-        showToast(`Successfully imported ${importedCount} password(s)${skippedCount > 0 ? `, skipped ${skippedCount}` : ''}`);
-      } else {
-        showToast('No valid passwords found in CSV');
-      }
-      
-      // Clear file input
-      fileInput.value = '';
-      
-    } catch (error) {
-      console.error('CSV import error:', error);
+        }
+
+        if (importedCount > 0) {
+          saveVault();
+          renderVault();
+          updatePasswordHealthDashboard();
+          closeModal('importCsvModal');
+          logAudit(`Imported ${importedCount} passwords from CSV`);
+          showToast(`Imported ${importedCount} item(s)${skippedCount ? `, skipped ${skippedCount}` : ''}`);
+        } else {
+          // Surface detected headers to help user diagnose
+          if (hasHeader) {
+            console.warn('CSV headers detected:', rows[0]);
+          }
+          showToast('No valid passwords found in CSV');
+        }
+
+        // Clear file input
+        fileInput.value = '';
+
+      } catch (error) {
+        console.error('CSV import error:', error);
         showToast('Error parsing CSV file: ' + (error.message || 'Unknown error'));
-    }
-  };
-  
+      }
+    };
+
     reader.onerror = function() {
       showToast('Error reading file');
     };
-  
-  reader.readAsText(fileInput.files[0]);
+
+    reader.readAsText(fileInput.files[0]);
 }
 
 // === AUTO-FILL ===
