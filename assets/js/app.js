@@ -276,13 +276,24 @@ function renderVault(filteredPasswords = passwords) {
   const vault = document.getElementById('vault');
   
   // Preserve search bar if it exists, otherwise create it
-  let searchBar = document.getElementById('searchBar');
-  const searchValue = searchBar ? searchBar.value : '';
+  let searchContainer = document.getElementById('searchContainer');
+  const searchValue = searchContainer ? document.getElementById('searchBar').value : '';
   
-  if (!searchBar) {
-    vault.innerHTML = '<input type="text" id="searchBar" placeholder="Search by site, username, or category" aria-label="Search">';
-    searchBar = document.getElementById('searchBar');
-    searchBar.addEventListener('input', filterVault);
+  if (!searchContainer) {
+    const container = document.createElement('div');
+    container.id = 'searchContainer';
+    container.className = 'search-container';
+    container.innerHTML = `
+      <input type="text" id="searchBar" placeholder="Search by site, username, or category" aria-label="Search">
+      <button id="clearSearch" class="clear-search-btn" onclick="clearSearch()" aria-label="Clear search" style="display:none;">✕</button>
+    `;
+    vault.insertBefore(container, vault.firstChild);
+    
+    const searchBar = document.getElementById('searchBar');
+    searchBar.addEventListener('input', () => {
+      filterVault();
+      document.getElementById('clearSearch').style.display = searchBar.value ? 'flex' : 'none';
+    });
   }
   
   // Remove all vault cards but keep the search bar
@@ -343,6 +354,14 @@ function filterVault() {
     (p.category && p.category.toLowerCase().includes(query))
   );
   renderVault(filtered);
+}
+
+function clearSearch() {
+  const searchBar = document.getElementById('searchBar');
+  searchBar.value = '';
+  document.getElementById('clearSearch').style.display = 'none';
+  renderVault(passwords);
+  searchBar.focus();
 }
 
 // === PASSWORD ACTIONS ===
