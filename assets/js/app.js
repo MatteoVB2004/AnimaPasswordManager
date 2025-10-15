@@ -1159,13 +1159,23 @@ function switchTab(tab, btn) {
 function initParticles() {
   const canvas = document.getElementById('particleCanvas');
   const ctx = canvas.getContext('2d');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  
+  // Fix for high-DPI screens (prevents stretching on mobile)
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  
+  // Use logical dimensions for particle positioning
+  const logicalWidth = rect.width;
+  const logicalHeight = rect.height;
+  
   particleArray = [];
   for (let i = 0; i < 150; i++) {
     particleArray.push({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
+      x: Math.random() * logicalWidth,
+      y: Math.random() * logicalHeight,
       r: Math.random() * 2 + 1,
       vx: (Math.random() - 0.5) * 0.7,
       vy: (Math.random() - 0.5) * 0.7,
@@ -1173,12 +1183,12 @@ function initParticles() {
     });
   }
   function animate() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, logicalWidth, logicalHeight);
     if (particlesEnabled) {
       particleArray.forEach(p => {
         p.x += p.vx; p.y += p.vy;
-        if (p.x > canvas.width) p.x = 0; if (p.x < 0) p.x = canvas.width;
-        if (p.y > canvas.height) p.y = 0; if (p.y < 0) p.y = canvas.height;
+        if (p.x > logicalWidth) p.x = 0; if (p.x < 0) p.x = logicalWidth;
+        if (p.y > logicalHeight) p.y = 0; if (p.y < 0) p.y = logicalHeight;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
         ctx.fillStyle = p.color; ctx.fill();
       });
@@ -1203,8 +1213,15 @@ function toggleParticles() {
 
 window.addEventListener('resize', () => {
   const c = document.getElementById('particleCanvas');
-  c.width = window.innerWidth;
-  c.height = window.innerHeight;
+  const ctx = c.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = c.getBoundingClientRect();
+  c.width = rect.width * dpr;
+  c.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  
+  // Reinitialize particles with new dimensions
+  initParticles();
 });
 
 // === ANDROID LAYOUT ===
