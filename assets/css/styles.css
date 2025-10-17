@@ -1,8 +1,8 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-body{font-family:'Inter',sans-serif;min-height:100vh;display:flex;background:#000000;color:#f9fafb;overflow:hidden;transition:0.3s;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;}
+body{font-family:'Inter',sans-serif;min-height:100vh;display:flex;background:#000000;color:#f9fafb;overflow:hidden;transition:0.3s;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;position:relative;}
 /* Android optimizations */
 body.android{overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;}
-body.android .main{padding-bottom:calc(env(safe-area-inset-bottom,0) + 100px);}
+body.android .main{padding-bottom:calc(env(safe-area-inset-bottom,0) + 100px);overflow-y:auto;overflow-x:hidden;}
 body.light{background:#f9f9f9;color:#1e1e2f;}
 button{cursor:pointer;outline:none;border:none;position:relative;transition:0.3s;}
 button:disabled{opacity:0.6;cursor:not-allowed;}
@@ -22,7 +22,7 @@ body.light .sidebar .account-icon:hover{background:linear-gradient(135deg,#3b82f
 body.android .sidebar button{padding:14px 18px;min-height:48px;}
 body.light .sidebar button{background:linear-gradient(135deg,#d1d5db,#e5e5e5);color:#1e1e2f;}
 body.light .sidebar button.active, body.light .sidebar button:hover{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;}
-.main{flex:1;padding:30px;overflow-x:auto;position:relative;transition:0.3s;color:inherit;display:none;z-index:1;}
+.main{flex:1;padding:30px;overflow-y:auto;overflow-x:hidden;position:relative;transition:0.3s;color:inherit;display:none;z-index:1;}
 .tab{display:none;}
 .tab.active{display:block;}
 input, select{width:100%;padding:10px 12px;margin-top:5px;border-radius:10px;border:1px solid #222222;background:#0a0a0a;color:#f9fafb;transition:0.3s;}
