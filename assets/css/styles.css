@@ -1,13 +1,15 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-body{font-family:'Inter',sans-serif;min-height:100vh;display:flex;background:#000000;color:#f9fafb;overflow:hidden;transition:0.3s;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;position:relative;}
+html{background:#000000;}
+html.light{background:#f9f9f9;}
+body{font-family:'Inter',sans-serif;min-height:100vh;display:flex;background:transparent;color:#f9fafb;overflow:hidden;transition:0.3s;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;position:relative;}
 /* Android optimizations */
 body.android{overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;}
 body.android .main{padding-bottom:calc(env(safe-area-inset-bottom,0) + 100px);overflow-y:auto;overflow-x:hidden;}
-body.light{background:#f9f9f9;color:#1e1e2f;}
+body.light{color:#1e1e2f;}
 button{cursor:pointer;outline:none;border:none;position:relative;transition:0.3s;}
 button:disabled{opacity:0.6;cursor:not-allowed;}
-.sidebar{width:240px;background:linear-gradient(145deg,#000000,#0a0a0a);color:#fff;display:flex;flex-direction:column;padding:20px 20px 10px;box-shadow:2px 0 10px rgba(0,0,0,0.2);align-items:center;justify-content:space-between;position:relative;z-index:1;}
-body.light .sidebar{background:linear-gradient(145deg,#e0e0e0,#cfcfcf);color:#1e1e2f;}
+.sidebar{width:240px;background:linear-gradient(145deg,rgba(0,0,0,0.95),rgba(10,10,10,0.95));color:#fff;display:flex;flex-direction:column;padding:20px 20px 10px;box-shadow:2px 0 10px rgba(0,0,0,0.2);align-items:center;justify-content:space-between;position:relative;z-index:1;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+body.light .sidebar{background:linear-gradient(145deg,rgba(224,224,224,0.95),rgba(207,207,207,0.95));color:#1e1e2f;}
 .sidebar img{width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid #3b82f6;}
 .sidebar .profile-container{display:flex;flex-direction:column;align-items:center;gap:15px;padding-bottom:20px;}
 .sidebar .header{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;}

@@ -2,6 +2,212 @@
 
 // === VARIABLES ===
 let users = JSON.parse(localStorage.getItem('users') || '{}');
+let currentUser = null;
+let passwords = [];
+let editIndex = null;
+let particlesEnabled = true;
+let particleArray = [];
+let deleteCallback = null;
+let deleteAccountUsername = null;
+const defaultProfilePic = 'Images/fe48a763-a358-45a5-81bd-77c0a70330ee.webp';
+let categories = JSON.parse(localStorage.getItem('categories') || '[]');
+let auditLog = JSON.parse(localStorage.getItem('auditLog') || '[]');
+const mfaSecrets = JSON.parse(localStorage.getItem('mfaSecrets') || '{}');
+const shareLinks = JSON.parse(localStorage.getItem('shareLinks') || '{}');
+
+// === CSV IMPORT HELPERS/STATE ===
+let csvImportState = { content: '', delimiter: ',', rows: [] };
+
+function detectCsvDelimiter(sample) {
+  const firstChunk = sample.slice(0, 5000);
+  const counts = {
+    ',': (firstChunk.match(/,/g) || []).length,
+    ';': (firstChunk.match(/;/g) || []).length,
+    '\t': (firstChunk.match(/\t/g) || []).length
+  };
+  let best = ','; let max = counts[','];
+  if (counts[';'] > max) { best = ';'; max = counts[';']; }
+  if (counts['\t'] > max) { best = '\t'; max = counts['\t']; }
+  return best === '\t' ? '\t' : best;
+}
+
+function parseCsvText(text, delim) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+    if (ch === '"') {
+      if (inQuotes && next === '"') { field += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (!inQuotes && (ch === '\n' || ch === '\r')) {
+      if (ch === '\r' && next === '\n') i++;
+      row.push(field.trim()); rows.push(row); row = []; field = '';
+    } else if (!inQuotes && ((delim === '\t' && ch === '\t') || (delim !== '\t' && ch === delim))) {
+      row.push(field.trim()); field = '';
+    } else { field += ch; }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field.trim()); rows.push(row); }
+  return rows.map(r => r.map(f => f.replace(/^"|"$/g, '')));
+}
+
+// === UTILITY FUNCTIONS ===
+function showToast(msg, duration = 2000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).classList.remove('active');
+  const modal = document.getElementById(modalId);
+  modal.querySelectorAll('input').forEach(input => input.value = '');
+  modal.querySelectorAll('.error-message').forEach(error => error.style.display = 'none');
+}
+
+function closeLoginModal() {
+  closeModal('loginModal');
+  document.querySelector('.sidebar').style.display = 'none';
+  document.querySelector('.main').style.display = 'none';
+  document.getElementById('openLoginBtn').style.display = 'block';
+  const tb = document.getElementById('topbar');
+  const bn = document.getElementById('bottomNav');
+  if (tb) tb.style.display = 'none';
+  if (bn) bn.style.display = 'none';
+}
+
+function closeCreateAccountModal() {
+  closeModal('createAccountModal');
+  document.querySelector('.sidebar').style.display = 'none';
+  document.querySelector('.main').style.display = 'none';
+  document.getElementById('openLoginBtn').style.display = 'block';
+  const tb = document.getElementById('topbar');
+  const bn = document.getElementById('bottomNav');
+  if (tb) tb.style.display = 'none';
+  if (bn) bn.style.display = 'none';
+}
+
+function openLoginModal() {
+  document.getElementById('loginModal').classList.add('active');
+  document.getElementById('openLoginBtn').style.display = 'none';
+  updateUserSelect();
+}
+
+// === ENCRYPTION ===
+function encryptData(data, key) {
+  return CryptoJS.AES.encrypt(JSON.stringify(data), key).toString();
+}
+
+function decryptData(encrypted, key) {
+  try {
+    const bytes = CryptoJS.AES.decrypt(encrypted, key);
+    return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+  } catch (e) {
+    return null;
+  }
+}
+
+// === THEME ===
+function toggleTheme() {
+  document.documentElement.classList.toggle('light');
+  document.body.classList.toggle('light');
+  localStorage.setItem('theme', document.body.classList.contains('light') ? 'light' : 'dark');
+  logAudit('Theme toggled to ' + (document.body.classList.contains('light') ? 'light' : 'dark'));
+}
+
+window.onload = () => {
+  const theme = localStorage.getItem('theme') || 'dark';
+  if (theme === 'light') {
+    document.documentElement.classList.add('light');
+    document.body.classList.add('light');
+  }
+  updateUserSelect();
+  updateCategorySelect();
+  if (Object.keys(users).length === 0) {
+    document.getElementById('createAccountModal').classList.add('active');
+    document.getElementById('openLoginBtn').style.display = 'none';
+  } else {
+    document.getElementById('loginModal').classList.add('active');
+    document.getElementById('openLoginBtn').style.display = 'none';
+  }
+};
+
+// === CSV IMPORT (DASHLANE) ===
+function openImportCsvModal() {
+  document.getElementById('importCsvModal').classList.add('active');
+  const mapDiv = document.getElementById('csvMapping');
+  if (mapDiv) mapDiv.style.display = 'none';
+  ['mapName','mapUsername','mapPassword','mapUrl','mapNote','mapCategory'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.innerHTML = '';
+  });
+  csvImportState = { content: '', delimiter: ',', rows: [] };
+}
+
+function populateMappingSelect(id, headers, autoIndex, includeNone = false) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  sel.innerHTML = '';
+  const optAuto = document.createElement('option');
+  optAuto.value = ''; optAuto.textContent = 'Auto'; sel.appendChild(optAuto);
+  if (includeNone) { const optNone = document.createElement('option'); optNone.value = '-1'; optNone.textContent = 'None'; sel.appendChild(optNone); }
+  headers.forEach((h, idx) => {
+    const opt = document.createElement('option');
+    opt.value = String(idx);
+    opt.textContent = h || `Column ${idx + 1}`;
+    if (autoIndex === idx) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function handleCsvFileChange() {
+  const fileInput = document.getElementById('csvFile');
+  if (!fileInput.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const content = e.target.result || '';
+    if (!content.trim()) { showToast('Empty CSV file'); return; }
+    const delim = detectCsvDelimiter(content);
+    let rows = parseCsvText(content, delim).filter(r => r.some(c => (c||'').trim().length > 0));
+    if (rows.length === 0) { showToast('No data found in CSV'); return; }
+    csvImportState = { content, delimiter: delim, rows };
+
+    let headers = [];
+    const maxCols = Math.max(...rows.slice(0, Math.min(rows.length, 5)).map(r => r.length));
+    if (document.getElementById('skipFirstRow').checked) {
+      headers = rows[0].map(h => (h || '').trim());
+    } else {
+      headers = Array.from({ length: maxCols }, (_, i) => `Column ${i + 1}`);
+    }
+
+    function guessIndex(names) {
+      const lower = headers.map(h => h.toLowerCase());
+      for (const n of names) { const idx = lower.indexOf(n); if (idx !== -1) return idx; }
+      return -1;
+    }
+    const autoMap = {
+      name: guessIndex(['name','title','label','site','website']),
+      url: guessIndex(['url','website','site','domain']),
+      username: guessIndex(['username','user','login','email']),
+      password: guessIndex(['password','passcode']),
+      note: guessIndex(['note','notes','comment','comments']),
+      category: guessIndex(['category','group','folder'])
+    };
+
+    document.getElementById('csvMapping').style.display = 'block';
+    populateMappingSelect('mapName', headers, autoMap.name, false);
+    populateMappingSelect('mapUsername', headers, autoMap.username, false);
+    populateMappingSelect('mapPassword', headers, autoMap.password, false);
+    populateMappingSelect('mapUrl', headers, autoMap.url, true);
+    populateMappingSelect('mapNote', headers, autoMap.note, true);
+    populateMappingSelect('mapCategory', headers, autoMap.category, true);
+  };
+  reader.onerror = function(){ showToast('Error reading file'); };
+  reader.readAsText(fileInput.files[0]);
+}
+
 function importCsvFile() {
   if (!currentUser) {
     showToast('Please login first');
